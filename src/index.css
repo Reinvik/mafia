@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+@theme {
+  --color-poker-green: #1E4D2B;
+  --color-poker-dark: #0F2916;
+  --color-poker-gold: #D4AF37;
+  --background-image-felt: url('https://www.transparenttextures.com/patterns/felt.png');
+}
+
+@layer base {
+  body {
+    @apply bg-poker-dark text-white font-sans overflow-hidden select-none;
+  }
+}
