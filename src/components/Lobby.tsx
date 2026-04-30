@@ -1,14 +1,23 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { useGameStore } from '../store/gameStore';
-import { LogOut, PlayCircle } from 'lucide-react';
+import { LogOut, PlayCircle, Sword, UserX, Users, DollarSign, Handshake } from 'lucide-react';
 
 export function Lobby() {
   const [name, setName] = useState('');
   const [roomCode, setRoomCode] = useState('');
   const [loading, setLoading] = useState(false);
   const { roomId, playerId, setRoomInfo, setCurrentPlayer, setIsHost, resetGame } = useGameStore();
+
+  // Leer código de sala desde la URL (?room=XXXX)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const roomParam = params.get('room');
+    if (roomParam) {
+      setRoomCode(roomParam);
+    }
+  }, []);
 
   const handleCreateRoom = async () => {
     if (!name) return alert('Dime tu nombre, forastero.');
@@ -75,31 +84,15 @@ export function Lobby() {
     setLoading(false);
   };
 
-  // UI para sesión pendiente
   if (roomId && playerId) {
     return (
       <div className="min-h-screen bg-poker-dark bg-felt flex items-center justify-center p-4">
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="max-w-md w-full bg-black/90 p-8 rounded-3xl border-2 border-poker-gold shadow-2xl text-center"
-        >
+        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="max-w-md w-full bg-black/90 p-8 rounded-3xl border-2 border-poker-gold shadow-2xl text-center">
           <h2 className="text-poker-gold text-2xl font-black mb-4 uppercase italic">PARTIDA EN CURSO</h2>
           <p className="text-gray-400 mb-8">Tienes una sesión pendiente en la familia. ¿Quieres volver o retirarte?</p>
-          
           <div className="space-y-4">
-            <button 
-              onClick={() => window.location.reload()}
-              className="w-full bg-poker-gold text-black font-black py-4 rounded-xl hover:bg-yellow-500 flex items-center justify-center gap-2"
-            >
-              <PlayCircle /> REANUDAR PARTIDA
-            </button>
-            <button 
-              onClick={() => resetGame()}
-              className="w-full bg-gray-800 text-red-500 font-bold py-4 rounded-xl hover:bg-gray-700 border border-red-500/30 flex items-center justify-center gap-2"
-            >
-              <LogOut size={20} /> ABANDONAR Y CERRAR
-            </button>
+            <button onClick={() => window.location.reload()} className="w-full bg-poker-gold text-black font-black py-4 rounded-xl hover:bg-yellow-500 flex items-center justify-center gap-2"><PlayCircle /> REANUDAR PARTIDA</button>
+            <button onClick={() => resetGame()} className="w-full bg-gray-800 text-red-500 font-bold py-4 rounded-xl hover:bg-gray-700 border border-red-500/30 flex items-center justify-center gap-2"><LogOut size={20} /> ABANDONAR Y CERRAR</button>
           </div>
         </motion.div>
       </div>
@@ -107,69 +100,122 @@ export function Lobby() {
   }
 
   return (
-    <div className="min-h-screen bg-poker-dark bg-felt flex items-center justify-center p-4">
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-md w-full bg-black/80 p-8 rounded-3xl border-2 border-poker-gold shadow-[0_0_50px_rgba(212,175,55,0.2)]"
-      >
-        <div className="text-center mb-8">
-          <motion.h1 
-            animate={{ textShadow: ["0 0 10px #D4AF37", "0 0 20px #D4AF37", "0 0 10px #D4AF37"] }}
-            transition={{ repeat: Infinity, duration: 2 }}
-            className="text-7xl font-black text-poker-gold uppercase tracking-tighter"
-          >
-            MAFIA
-          </motion.h1>
-          <p className="text-gray-400 mt-2 italic">"Toda lealtad tiene su precio"</p>
-        </div>
-
-        <div className="space-y-6">
-          <div>
-            <label className="block text-poker-gold text-sm font-bold mb-2 uppercase tracking-widest">Tu Nombre</label>
-            <input 
-              type="text" 
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full bg-gray-900 border-2 border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-poker-gold transition-colors text-lg"
-              placeholder="Ej: Vito Corleone"
-            />
-          </div>
-
-          <div className="pt-4 space-y-4">
-            <button 
-              onClick={handleCreateRoom}
-              disabled={loading}
-              className="w-full bg-poker-gold text-black font-black py-4 rounded-xl hover:bg-yellow-500 transition-all active:scale-95 shadow-[0_5px_0_#9a7d25] disabled:opacity-50"
+    <div className="min-h-screen bg-mafia-deep flex items-start sm:items-center justify-center p-4 lg:p-8 overflow-y-auto py-8">
+      <div className="max-w-6xl w-full flex flex-col lg:flex-row gap-8 lg:gap-16 items-start">
+        
+        {/* COLUMNA IZQUIERDA: HISTORIA Y ACCIONES */}
+        <motion.div 
+          initial={{ opacity: 0, x: -30 }} 
+          animate={{ opacity: 1, x: 0 }} 
+          className="flex-1 space-y-6 lg:space-y-10 py-4 lg:py-12"
+        >
+          <div className="text-left">
+            <motion.h1 
+              animate={{ textShadow: ["0 0 10px #D4AF37", "0 0 20px #D4AF37", "0 0 10px #D4AF37"] }} 
+              transition={{ repeat: Infinity, duration: 2 }} 
+              className="text-5xl sm:text-7xl lg:text-8xl font-black text-poker-gold uppercase tracking-tighter leading-none"
             >
-              {loading ? 'CREANDO...' : 'FUNDAR NUEVA SALA'}
-            </button>
+              ALTA<br/>TRAICIÓN
+            </motion.h1>
+            <p className="text-gray-500 mt-4 italic text-xl tracking-[0.2em] uppercase">"La lealtad tiene su precio"</p>
+          </div>
 
-            <div className="relative flex items-center py-2">
-              <div className="flex-grow border-t border-gray-700"></div>
-              <span className="flex-shrink mx-4 text-gray-500 text-xs font-bold uppercase tracking-widest">O únete a una</span>
-              <div className="flex-grow border-t border-gray-700"></div>
+          <div className="space-y-6 max-w-xl">
+            <div className="bg-black/40 border-l-4 border-poker-gold p-6 rounded-r-2xl backdrop-blur-sm">
+              <p className="text-gray-300 text-lg leading-relaxed italic">
+                "La Familia está en una encrucijada. El viejo Capo está por retirarse y busca un sucesor digno. 
+                Nos envían a misiones donde la clave es cooperar para llenar las arcas, pero el dinero fácil tienta hasta al más leal."
+              </p>
+              <p className="text-gray-400 text-sm mt-4 leading-relaxed">
+                De vez en cuando, alguien traiciona para quedarse con un botín extra. Si desconfías, puedes poner <span className="text-purple-400 font-bold uppercase">trampas</span>, pero no lo hagas mucho... aquel que acumule más fortuna al final de las 10 misiones será el nuevo <span className="text-poker-gold font-bold">Capo</span>.
+              </p>
             </div>
 
-            <div className="flex gap-2">
-              <input 
-                type="text" 
-                value={roomCode}
-                onChange={(e) => setRoomCode(e.target.value)}
-                className="flex-1 bg-gray-900 border-2 border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-poker-gold transition-colors font-mono"
-                placeholder="Código de Sala"
-              />
-              <button 
-                onClick={handleJoinRoom}
-                disabled={loading}
-                className="bg-gray-800 text-poker-gold border-2 border-poker-gold/50 px-6 py-3 rounded-xl hover:bg-gray-700 transition-all font-bold disabled:opacity-50"
-              >
-                UNIRSE
-              </button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <ActionDesc icon={<Handshake className="text-blue-400" />} title="Cooperar" desc="Todos ganan dinero del botín acumulado si todos son leales." />
+              <ActionDesc icon={<Sword className="text-red-400" />} title="Traicionar" desc="Intentas robar el botín global. Si otros traicionan, el botín se divide o se pierde." />
+              <ActionDesc icon={<UserX className="text-purple-400" />} title="Trampa" desc="Castigas a los traidores de tu grupo local, robándoles su dinero acumulado." />
+              <div className="bg-white/5 p-4 rounded-2xl border border-white/5 flex items-center gap-4">
+                <Users className="text-poker-gold" size={32} />
+                <p className="text-[10px] text-gray-400 uppercase leading-tight font-bold">Interactúa con diferentes miembros de la familia cada ronda.</p>
+              </div>
             </div>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
+
+        {/* COLUMNA DERECHA: LOGIN / ACCIÓN */}
+        <motion.div 
+          initial={{ opacity: 0, x: 30 }} 
+          animate={{ opacity: 1, x: 0 }} 
+          className="w-full lg:w-[450px] flex flex-col justify-center"
+        >
+          <div className="bg-black/80 p-8 sm:p-10 rounded-[2.5rem] border-2 border-poker-gold shadow-[0_0_60px_rgba(212,175,55,0.15)] relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-poker-gold to-transparent opacity-50"></div>
+            
+            <div className="space-y-8">
+              <div>
+                <label className="block text-poker-gold text-xs font-black mb-3 uppercase tracking-[0.2em]">Identidad del Capo</label>
+                <input 
+                  type="text" 
+                  value={name} 
+                  onChange={(e) => setName(e.target.value)} 
+                  className="w-full bg-gray-900 border-2 border-gray-700 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-poker-gold transition-colors text-xl font-bold shadow-inner" 
+                  placeholder="Tu alias..." 
+                />
+              </div>
+
+              <div className="space-y-5">
+                <button 
+                  onClick={handleCreateRoom} 
+                  disabled={loading} 
+                  className="w-full bg-poker-gold text-black font-black py-5 rounded-2xl hover:bg-yellow-500 transition-all active:scale-95 shadow-[0_6px_0_#9a7d25] disabled:opacity-50 text-xl tracking-tighter flex items-center justify-center gap-3"
+                >
+                  <DollarSign /> {loading ? 'FUNDANDO...' : 'FUNDAR NUEVA SALA'}
+                </button>
+
+                <div className="relative flex items-center py-4">
+                  <div className="flex-grow border-t border-gray-800"></div>
+                  <span className="flex-shrink mx-6 text-gray-600 text-xs font-black uppercase tracking-[0.3em]">O unirse a la familia</span>
+                  <div className="flex-grow border-t border-gray-800"></div>
+                </div>
+
+                <div className="space-y-3">
+                  <input 
+                    type="text" 
+                    value={roomCode} 
+                    onChange={(e) => setRoomCode(e.target.value)} 
+                    className="w-full bg-gray-900 border-2 border-gray-700 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-poker-gold transition-colors font-mono text-center tracking-widest text-lg" 
+                    placeholder="CÓDIGO DE SALA" 
+                  />
+                  <button 
+                    onClick={handleJoinRoom} 
+                    disabled={loading} 
+                    className="w-full bg-gray-800 text-poker-gold border-2 border-poker-gold/30 py-4 rounded-2xl hover:bg-gray-700 transition-all font-black uppercase tracking-widest text-sm disabled:opacity-50"
+                  >
+                    UNIRSE A LA MISIÓN
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 text-center">
+            <p className="text-[10px] text-gray-600 font-black uppercase tracking-[0.4em]">Toda lealtad tiene su precio</p>
+          </div>
+        </motion.div>
+      </div>
+    </div>
+  );
+}
+
+function ActionDesc({ icon, title, desc }: any) {
+  return (
+    <div className="bg-white/5 p-4 rounded-2xl border border-white/5 flex gap-4 items-start backdrop-blur-sm">
+      <div className="bg-black/40 p-2 rounded-xl shrink-0">{icon}</div>
+      <div>
+        <h3 className="font-black text-xs uppercase text-poker-gold tracking-widest mb-1">{title}</h3>
+        <p className="text-[10px] text-gray-400 leading-tight font-medium uppercase">{desc}</p>
+      </div>
     </div>
   );
 }

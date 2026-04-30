@@ -4,27 +4,36 @@ import { GameBoard } from './components/GameBoard';
 import { GameOver } from './components/GameOver';
 import { useGameStore } from './store/gameStore';
 import { useSupabaseGame } from './hooks/useSupabaseGame';
+import { AnimatePresence, motion } from 'framer-motion';
 
 function App() {
-  const { status, roomId, currentPlayer } = useGameStore();
+  const { status } = useGameStore();
   useSupabaseGame();
 
-  if (roomId && !currentPlayer && status !== 'lobby') {
-    return (
-      <div className="w-full h-screen bg-poker-dark bg-felt flex items-center justify-center">
-        <div className="text-poker-gold animate-pulse font-black italic text-2xl uppercase">
-          Reconectando con la familia...
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="w-full h-screen overflow-hidden selection:bg-poker-gold selection:text-black">
-      {status === 'lobby' && <Lobby />}
-      {status === 'waiting' && <WaitingRoom />}
-      {status === 'playing' && <GameBoard />}
-      {status === 'finished' && <GameOver />}
+    <div className="w-full h-screen overflow-hidden selection:bg-poker-gold selection:text-black bg-mafia-deep">
+      <AnimatePresence mode="wait">
+        {status === 'lobby' && (
+          <motion.div key="lobby" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full">
+            <Lobby />
+          </motion.div>
+        )}
+        {status === 'waiting' && (
+          <motion.div key="waiting" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full">
+            <WaitingRoom />
+          </motion.div>
+        )}
+        {status === 'playing' && (
+          <motion.div key="playing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full">
+            <GameBoard />
+          </motion.div>
+        )}
+        {status === 'finished' && (
+          <motion.div key="finished" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full">
+            <GameOver />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

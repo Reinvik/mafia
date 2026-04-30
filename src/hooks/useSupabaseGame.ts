@@ -59,13 +59,22 @@ export function useSupabaseGame() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'mafia_rooms' }, (payload) => {
         const newRoom = payload.new as any;
         if (newRoom.id === roomId) {
-          setRoomInfo({ 
-            id: newRoom.id, 
-            status: newRoom.status, 
-            globalPool: newRoom.global_pool, 
-            roundNumber: newRoom.round_number,
-            max_rounds: newRoom.max_rounds 
-          });
+          const updateState = () => {
+            setRoomInfo({ 
+              id: newRoom.id, 
+              status: newRoom.status, 
+              globalPool: newRoom.global_pool, 
+              roundNumber: newRoom.round_number,
+              max_rounds: newRoom.max_rounds 
+            });
+          };
+
+          if (newRoom.status === 'finished') {
+            // Esperar a que termine la animación de resolución (3s aprox) + 1s extra antes de mostrar el ganador
+            setTimeout(updateState, 4000);
+          } else {
+            updateState();
+          }
         }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'mafia_players' }, (payload) => {

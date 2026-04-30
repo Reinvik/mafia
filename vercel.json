@@ -1,0 +1,16 @@
+{
+  "name": "nmafia",
+  "framework": "vite",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "env": {
+    "VITE_SUPABASE_URL": "https://iuzpgljjfeobxlptmsma.supabase.co",
+    "VITE_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml1enBnbGpqZmVvYnhscHRtc21hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY3NjY3NDAsImV4cCI6MjA4MjM0Mjc0MH0.7CK8fYBOiAjoxZXUw12VPbbNePjCQldSKXoVx_-ajXA"
+  },
+  "build": {
+    "env": {
+      "VITE_SUPABASE_URL": "https://iuzpgljjfeobxlptmsma.supabase.co",
+      "VITE_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml1enBnbGpqZmVvYnhscHRtc21hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY3NjY3NDAsImV4cCI6MjA4MjM0Mjc0MH0.7CK8fYBOiAjoxZXUw12VPbbNePjCQldSKXoVx_-ajXA"
+    }
+  }
+}

@@ -1,14 +1,15 @@
 @import "tailwindcss";
 
 @theme {
-  --color-poker-green: #1E4D2B;
-  --color-poker-dark: #0F2916;
+  --color-mafia-deep: #050505;
+  --color-mafia-surface: #0a0a0a;
   --color-poker-gold: #D4AF37;
-  --background-image-felt: url('https://www.transparenttextures.com/patterns/felt.png');
+  --background-image-grain: url('https://www.transparenttextures.com/patterns/black-paper.png');
 }
 
 @layer base {
   body {
-    @apply bg-poker-dark text-white font-sans overflow-hidden select-none;
+    @apply bg-mafia-deep text-white font-sans overflow-hidden select-none;
+    background-image: var(--background-image-grain);
   }
 }
