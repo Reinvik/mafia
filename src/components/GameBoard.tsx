@@ -302,17 +302,7 @@ export function GameBoard() {
 
   return (
     <div className="w-full h-screen bg-mafia-deep flex flex-col lg:flex-row overflow-hidden relative selection:bg-poker-gold selection:text-black">
-      <AnimatePresence>
-        {isResolving && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-[200] bg-black/95 backdrop-blur-2xl flex items-center justify-center flex-col gap-8">
-            <div className="relative">
-              <div className="w-24 h-24 border-4 border-poker-gold border-t-transparent rounded-full animate-spin"></div>
-              <div className="absolute inset-0 flex items-center justify-center"><Handshake className="text-poker-gold" size={32} /></div>
-            </div>
-            <h2 className="text-poker-gold font-black text-2xl sm:text-4xl tracking-[0.5em] uppercase italic">ALTA TRAICIÓN</h2>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
 
       <div className="flex-1 flex flex-col p-4 sm:p-6 relative overflow-hidden">
         {/* HUD Superior */}

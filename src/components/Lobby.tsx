@@ -100,16 +100,28 @@ export function Lobby() {
   }
 
   return (
-    <div className="min-h-screen bg-mafia-deep flex items-start sm:items-center justify-center p-4 lg:p-8 overflow-y-auto py-8">
-      <div className="max-w-6xl w-full flex flex-col lg:flex-row gap-8 lg:gap-16 items-start">
+    <div className="min-h-screen bg-mafia-deep flex items-start sm:items-center justify-center p-4 lg:p-8 overflow-y-auto py-4 sm:py-8">
+      <div className="max-w-6xl w-full flex flex-col lg:flex-row gap-6 lg:gap-16 items-start">
         
-        {/* COLUMNA IZQUIERDA: HISTORIA Y ACCIONES */}
+        {/* TÍTULO MÓVIL (Solo se ve en móvil arriba de todo) */}
+        <div className="lg:hidden w-full text-center mb-2">
+          <motion.h1 
+            animate={{ textShadow: ["0 0 10px #D4AF37", "0 0 20px #D4AF37", "0 0 10px #D4AF37"] }} 
+            transition={{ repeat: Infinity, duration: 2 }} 
+            className="text-5xl font-black text-poker-gold uppercase tracking-tighter leading-none"
+          >
+            ALTA<br/>TRAICIÓN
+          </motion.h1>
+          <p className="text-gray-500 mt-2 italic text-xs tracking-[0.2em] uppercase">"La lealtad tiene su precio"</p>
+        </div>
+
+        {/* COLUMNA IZQUIERDA: HISTORIA Y ACCIONES (Se mueve abajo en móvil) */}
         <motion.div 
           initial={{ opacity: 0, x: -30 }} 
           animate={{ opacity: 1, x: 0 }} 
-          className="flex-1 space-y-6 lg:space-y-10 py-4 lg:py-12"
+          className="order-2 lg:order-1 flex-1 space-y-6 lg:space-y-10 py-4 lg:py-12"
         >
-          <div className="text-left">
+          <div className="hidden lg:block text-left">
             <motion.h1 
               animate={{ textShadow: ["0 0 10px #D4AF37", "0 0 20px #D4AF37", "0 0 10px #D4AF37"] }} 
               transition={{ repeat: Infinity, duration: 2 }} 
@@ -120,62 +132,62 @@ export function Lobby() {
             <p className="text-gray-500 mt-4 italic text-xl tracking-[0.2em] uppercase">"La lealtad tiene su precio"</p>
           </div>
 
-          <div className="space-y-6 max-w-xl">
-            <div className="bg-black/40 border-l-4 border-poker-gold p-6 rounded-r-2xl backdrop-blur-sm">
-              <p className="text-gray-300 text-lg leading-relaxed italic">
+          <div className="space-y-4 lg:space-y-6 max-w-xl">
+            <div className="bg-black/40 border-l-4 border-poker-gold p-4 lg:p-6 rounded-r-2xl backdrop-blur-sm">
+              <p className="text-gray-300 text-sm lg:text-lg leading-relaxed italic">
                 "La Familia está en una encrucijada. El viejo Capo está por retirarse y busca un sucesor digno. 
                 Nos envían a misiones donde la clave es cooperar para llenar las arcas, pero el dinero fácil tienta hasta al más leal."
               </p>
-              <p className="text-gray-400 text-sm mt-4 leading-relaxed">
-                De vez en cuando, alguien traiciona para quedarse con un botín extra. Si desconfías, puedes poner <span className="text-purple-400 font-bold uppercase">trampas</span>, pero no lo hagas mucho... aquel que acumule más fortuna al final de las 10 misiones será el nuevo <span className="text-poker-gold font-bold">Capo</span>.
+              <p className="text-gray-400 text-[10px] lg:text-sm mt-3 lg:mt-4 leading-relaxed">
+                De vez en cuando, alguien traiciona por un botín extra. Aquel que acumule más fortuna al final de las 10 misiones será el nuevo <span className="text-poker-gold font-bold">Capo</span>.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <ActionDesc icon={<Handshake className="text-blue-400" />} title="Cooperar" desc="Todos ganan dinero del botín acumulado si todos son leales." />
-              <ActionDesc icon={<Sword className="text-red-400" />} title="Traicionar" desc="Intentas robar el botín global. Si otros traicionan, el botín se divide o se pierde." />
-              <ActionDesc icon={<UserX className="text-purple-400" />} title="Trampa" desc="Castigas a los traidores de tu grupo local, robándoles su dinero acumulado." />
-              <div className="bg-white/5 p-4 rounded-2xl border border-white/5 flex items-center gap-4">
-                <Users className="text-poker-gold" size={32} />
-                <p className="text-[10px] text-gray-400 uppercase leading-tight font-bold">Interactúa con diferentes miembros de la familia cada ronda.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-4">
+              <ActionDesc icon={<Handshake className="text-blue-400" />} title="Cooperar" desc="Todos ganan dinero si todos son leales." />
+              <ActionDesc icon={<Sword className="text-red-400" />} title="Traicionar" desc="Robas el botín, pero te arriesgas al fuego cruzado." />
+              <ActionDesc icon={<UserX className="text-purple-400" />} title="Trampa" desc="Castigas a los traidores y les robas su dinero." />
+              <div className="bg-white/5 p-3 lg:p-4 rounded-2xl border border-white/5 flex items-center gap-4">
+                <Users className="text-poker-gold shrink-0" size={24} />
+                <p className="text-[9px] lg:text-[10px] text-gray-400 uppercase leading-tight font-bold">Interactúa con diferentes miembros cada ronda.</p>
               </div>
             </div>
           </div>
         </motion.div>
 
-        {/* COLUMNA DERECHA: LOGIN / ACCIÓN */}
+        {/* COLUMNA DERECHA: LOGIN (Primero en móvil) */}
         <motion.div 
           initial={{ opacity: 0, x: 30 }} 
           animate={{ opacity: 1, x: 0 }} 
-          className="w-full lg:w-[450px] flex flex-col justify-center"
+          className="order-1 lg:order-2 w-full lg:w-[450px] flex flex-col justify-center"
         >
-          <div className="bg-black/80 p-8 sm:p-10 rounded-[2.5rem] border-2 border-poker-gold shadow-[0_0_60px_rgba(212,175,55,0.15)] relative overflow-hidden">
+          <div className="bg-black/80 p-6 lg:p-10 rounded-[2rem] lg:rounded-[2.5rem] border-2 border-poker-gold shadow-[0_0_60px_rgba(212,175,55,0.15)] relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-poker-gold to-transparent opacity-50"></div>
             
-            <div className="space-y-8">
+            <div className="space-y-6 lg:space-y-8">
               <div>
-                <label className="block text-poker-gold text-xs font-black mb-3 uppercase tracking-[0.2em]">Identidad del Capo</label>
+                <label className="block text-poker-gold text-[10px] lg:text-xs font-black mb-2 lg:mb-3 uppercase tracking-[0.2em]">Identidad del Capo</label>
                 <input 
                   type="text" 
                   value={name} 
                   onChange={(e) => setName(e.target.value)} 
-                  className="w-full bg-gray-900 border-2 border-gray-700 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-poker-gold transition-colors text-xl font-bold shadow-inner" 
+                  className="w-full bg-gray-900 border-2 border-gray-700 rounded-xl lg:rounded-2xl px-4 lg:px-5 py-3 lg:py-4 text-white focus:outline-none focus:border-poker-gold transition-colors text-lg lg:text-xl font-bold shadow-inner" 
                   placeholder="Tu alias..." 
                 />
               </div>
 
-              <div className="space-y-5">
+              <div className="space-y-4 lg:space-y-5">
                 <button 
                   onClick={handleCreateRoom} 
                   disabled={loading} 
-                  className="w-full bg-poker-gold text-black font-black py-5 rounded-2xl hover:bg-yellow-500 transition-all active:scale-95 shadow-[0_6px_0_#9a7d25] disabled:opacity-50 text-xl tracking-tighter flex items-center justify-center gap-3"
+                  className="w-full bg-poker-gold text-black font-black py-4 lg:py-5 rounded-xl lg:rounded-2xl hover:bg-yellow-500 transition-all active:scale-95 shadow-[0_4px_0_#9a7d25] lg:shadow-[0_6px_0_#9a7d25] disabled:opacity-50 text-lg lg:text-xl tracking-tighter flex items-center justify-center gap-3"
                 >
                   <DollarSign /> {loading ? 'FUNDANDO...' : 'FUNDAR NUEVA SALA'}
                 </button>
 
-                <div className="relative flex items-center py-4">
+                <div className="relative flex items-center py-2 lg:py-4">
                   <div className="flex-grow border-t border-gray-800"></div>
-                  <span className="flex-shrink mx-6 text-gray-600 text-xs font-black uppercase tracking-[0.3em]">O unirse a la familia</span>
+                  <span className="flex-shrink mx-4 lg:mx-6 text-gray-600 text-[10px] font-black uppercase tracking-[0.3em]">O unirse</span>
                   <div className="flex-grow border-t border-gray-800"></div>
                 </div>
 
@@ -184,13 +196,13 @@ export function Lobby() {
                     type="text" 
                     value={roomCode} 
                     onChange={(e) => setRoomCode(e.target.value)} 
-                    className="w-full bg-gray-900 border-2 border-gray-700 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-poker-gold transition-colors font-mono text-center tracking-widest text-lg" 
+                    className="w-full bg-gray-900 border-2 border-gray-700 rounded-xl lg:rounded-2xl px-4 lg:px-5 py-3 lg:py-4 text-white focus:outline-none focus:border-poker-gold transition-colors font-mono text-center tracking-widest text-base lg:text-lg" 
                     placeholder="CÓDIGO DE SALA" 
                   />
                   <button 
                     onClick={handleJoinRoom} 
                     disabled={loading} 
-                    className="w-full bg-gray-800 text-poker-gold border-2 border-poker-gold/30 py-4 rounded-2xl hover:bg-gray-700 transition-all font-black uppercase tracking-widest text-sm disabled:opacity-50"
+                    className="w-full bg-gray-800 text-poker-gold border-2 border-poker-gold/30 py-3 lg:py-4 rounded-xl lg:rounded-2xl hover:bg-gray-700 transition-all font-black uppercase tracking-widest text-xs lg:text-sm disabled:opacity-50"
                   >
                     UNIRSE A LA MISIÓN
                   </button>
@@ -199,8 +211,8 @@ export function Lobby() {
             </div>
           </div>
 
-          <div className="mt-8 text-center">
-            <p className="text-[10px] text-gray-600 font-black uppercase tracking-[0.4em]">Toda lealtad tiene su precio</p>
+          <div className="mt-6 lg:mt-8 text-center">
+            <p className="text-[9px] lg:text-[10px] text-gray-600 font-black uppercase tracking-[0.4em]">Toda lealtad tiene su precio</p>
           </div>
         </motion.div>
       </div>
