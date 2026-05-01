@@ -104,8 +104,8 @@ export function useSupabaseGame() {
         new Audio('/click-clack.mp3').play().catch(() => {});
         window.dispatchEvent(new CustomEvent('screenshake'));
       })
-      .on('broadcast', { event: 'round_resolved' }, () => {
-        window.dispatchEvent(new CustomEvent('round_resolved'));
+      .on('broadcast', { event: 'round_resolved' }, (payload) => {
+        window.dispatchEvent(new CustomEvent('round_resolved', { detail: payload.payload }));
       })
       .on('broadcast', { event: 'round_resolving' }, () => {
         window.dispatchEvent(new CustomEvent('round_resolving'));

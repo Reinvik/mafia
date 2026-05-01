@@ -231,23 +231,39 @@ export function GameBoard() {
     };
 
     // Escuchar broadcast de resolución
-    const onResolved = () => fetchResults(roundNumber);
+    const onResolved = (e: any) => {
+      const resolvedRound = e.detail?.roundNumber || roundNumber;
+      fetchResults(resolvedRound);
+    };
+
     window.addEventListener('round_resolved', onResolved);
     return () => window.removeEventListener('round_resolved', onResolved);
   }, [roundNumber, roomId]);
+
+  useEffect(() => {
+    // Seguridad: Si nos quedamos bloqueados en isResolving por más de 12 segundos, forzar reset.
+    if (isResolving) {
+      const timer = setTimeout(() => setIsResolving(false), 12000);
+      return () => clearTimeout(timer);
+    }
+  }, [isResolving]);
 
   useEffect(() => { logEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [logs]);
 
   // Auto-resolución cuando todos están listos (Solo Host)
   useEffect(() => {
     if (isHost && !isResolving && players.length > 0 && readyPlayers.size >= players.length) {
-      setTimeout(async () => {
+      const triggerResolve = async () => {
         if (!isResolving) {
+          setIsResolving(true); // Bloqueo local inmediato
           await sendRoundResolving();
           new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3').play().catch(() => {});
           roundEngine.resolveRound(roomId!, roundNumber).finally(() => {});
         }
-      }, 500);
+      };
+      
+      const timer = setTimeout(triggerResolve, 500);
+      return () => clearTimeout(timer);
     }
   }, [readyPlayers.size, players.length, isHost, isResolving, roomId, roundNumber]);
 
@@ -280,6 +296,7 @@ export function GameBoard() {
         if (prev <= 1) {
           clearInterval(intervalId);
           if (isHost && !isResolving) {
+            setIsResolving(true); // Bloqueo local inmediato
             sendRoundResolving().then(() => {
               new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3').play().catch(() => {});
               roundEngine.resolveRound(roomId!, roundNumber).finally(() => {});
