@@ -210,17 +210,23 @@ export function GameBoard() {
           if (a.action_type === 'betray') hasBetrayal = true;
         });
         
-        // REVELAR TODO AL MISMO TIEMPO
-        setRevealedActions(mapping);
-        
-        if (hasBetrayal) {
-          new Audio('/gunshot.mp3').play().catch(() => {});
-        }
-
-        // Mantener visualización unos segundos antes de permitir nueva ronda
+        // PEQUEÑO RETRASO PARA TENSIÓN (1s de incógnito total antes del giro)
         setTimeout(() => {
-          setIsResolving(false);
-        }, 4000);
+          setRevealedActions(mapping);
+          
+          if (hasBetrayal) {
+            // Sonido de disparo (Traición detectada)
+            new Audio('https://assets.mixkit.co/active_storage/sfx/1691/1691-preview.mp3').play().catch(() => {});
+          } else {
+            // Sonido de éxito/brillo (Cooperación total)
+            new Audio('https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3').play().catch(() => {});
+          }
+
+          // Mantener visualización unos segundos antes de permitir nueva ronda
+          setTimeout(() => {
+            setIsResolving(false);
+          }, 6000);
+        }, 1000);
       }
     };
 
