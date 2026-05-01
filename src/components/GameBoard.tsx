@@ -31,12 +31,8 @@ export function GameBoard() {
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
   const [showShop, setShowShop] = useState(false);
   const [showLogs, setShowLogs] = useState(false);
-  const [isResolving, setIsResolving] = useState(false);
   const [purchased, setPurchased] = useState<string[]>([]);
   const [logs, setLogs] = useState<GameLog[]>([]);
-  const [revealedActions, setRevealedActions] = useState<Record<string, string>>(() => {
-    return players.reduce((acc, p) => ({ ...acc, [p.id]: (p as any).last_action || '' }), {});
-  });
   const [readyPlayers, setReadyPlayers] = useState<Set<string>>(new Set());
   const [activeEvent, setActiveEvent] = useState<{ id: string; label: string } | null>(null);
   const [showStats, setShowStats] = useState(false);
@@ -45,11 +41,25 @@ export function GameBoard() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
   const { sendActionLockIn, sendRoundResolving } = useSupabaseGame();
 
+  // === MÁQUINA DE ESTADOS DE FICHAS ===
+  type ChipPhase = 'playing' | 'revealed';
+  const [chipPhase, setChipPhase] = useState<ChipPhase>('playing');
+  const [revealedActions, setRevealedActions] = useState<Record<string, string>>({});
+  const [isResolving, setIsResolving] = useState(false);
+  
+  // Estado para mantener las posiciones fijas hasta que empiece la nueva ronda
+  const [layoutRound, setLayoutRound] = useState(roundNumber);
+
   useEffect(() => {
-    const onResolving = () => {
-      setIsResolving(true);
-      setRevealedActions({}); // Ocultar todo al empezar a resolver
-    };
+    // Solo actualizar el layout cuando la ronda está en juego, no en la resolución
+    if (chipPhase === 'playing') {
+      setLayoutRound(roundNumber);
+    }
+  }, [roundNumber, chipPhase]);
+
+  useEffect(() => {
+    // round_resolving = todos eligieron, bloquear botones (fichas ya muestran ✅)
+    const onResolving = () => setIsResolving(true);
     window.addEventListener('round_resolving', onResolving);
     return () => window.removeEventListener('round_resolving', onResolving);
   }, []);
@@ -125,12 +135,11 @@ export function GameBoard() {
     }
   }, [globalPool, players, roundNumber]);
 
-  if (!currentPlayer) return null;
-
+  // ⚠️ REGLA DE HOOKS: useMemo DEBE estar antes de cualquier early return
   const playerGroups = useMemo(() => {
     const shuffled = [...players].sort((a, b) => {
-      const hashA = (a.id.charCodeAt(0) || 0) + roundNumber;
-      const hashB = (b.id.charCodeAt(0) || 0) + roundNumber;
+      const hashA = (a.id.charCodeAt(0) || 0) + layoutRound;
+      const hashB = (b.id.charCodeAt(0) || 0) + layoutRound;
       return (hashA % 10) - (hashB % 10);
     });
     const groups: any[][] = [];
@@ -145,7 +154,11 @@ export function GameBoard() {
       });
     }
     return groups;
-  }, [players, roundNumber]);
+  }, [players, layoutRound]);
+
+  if (!currentPlayer) return null;
+
+  // (playerGroups ya fue calculado antes del early return)
 
   useEffect(() => {
     if (roomId) {
@@ -165,7 +178,11 @@ export function GameBoard() {
 
       const logChannel = supabase.channel(`logs:${roomId}`)
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mafia_logs', filter: `room_id=eq.${roomId}` }, (payload) => {
-          setLogs(prev => [...prev, payload.new as GameLog]);
+          setLogs(prev => {
+            // Evitar duplicados por ID
+            if (prev.some(l => l.id === payload.new.id)) return prev;
+            return [...prev, payload.new as GameLog];
+          });
         }).subscribe();
 
       const actionsChannel = supabase.channel(`ready_check:${roomId}`)
@@ -199,54 +216,33 @@ export function GameBoard() {
   }, [roomId, roundNumber]);
 
   useEffect(() => {
-    const fetchResults = async (rNum: number) => {
-      if (!roomId || rNum <= 0) return;
-      const { data } = await supabase.from('mafia_actions').select('player_id, action_type').eq('room_id', roomId).eq('round_number', rNum);
-      if (data) {
-        const mapping: Record<string, string> = {};
-        let hasBetrayal = false;
-        data.forEach(a => {
-          mapping[a.player_id] = a.action_type;
-          if (a.action_type === 'betray') hasBetrayal = true;
-        });
-        
-        // PEQUEÑO RETRASO PARA TENSIÓN (1s de incógnito total antes del giro)
-        setTimeout(() => {
-          setRevealedActions(mapping);
-          
-          if (hasBetrayal) {
-            // Sonido de disparo (Traición detectada)
-            new Audio('https://assets.mixkit.co/active_storage/sfx/1691/1691-preview.mp3').play().catch(() => {});
-          } else {
-            // Sonido de éxito/brillo (Cooperación total)
-            new Audio('https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3').play().catch(() => {});
-          }
-
-          // Mantener visualización unos segundos antes de permitir nueva ronda
-          setTimeout(() => {
-            setIsResolving(false);
-          }, 6000);
-        }, 1000);
-      }
-    };
-
-    // Escuchar broadcast de resolución
+    // round_resolved llega con el mapa completo de acciones en el payload
     const onResolved = (e: any) => {
-      const resolvedRound = e.detail?.roundNumber || roundNumber;
-      fetchResults(resolvedRound);
+      const { actions = {}, hasBetrayal = false } = e.detail || {};
+
+      // 1s de suspense (todos ya muestran ✅, luego giran todos)
+      setTimeout(() => {
+        setChipPhase('revealed');
+        setRevealedActions(actions);
+
+        // Sonido según resultado
+        if (hasBetrayal) {
+          console.log("¡TRAICIÓN DETECTADA! Disparando...");
+          const shot = new Audio('/gunshot.mp3');
+          shot.volume = 1.0;
+          shot.play().catch(e => console.error("Error disparo gunshot.mp3:", e));
+        } else {
+          console.log("Cooperación total. Sonido de éxito.");
+          const success = new Audio('https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3');
+          success.volume = 0.5;
+          success.play().catch(e => console.error("Error éxito:", e));
+        }
+      }, 1000);
     };
 
     window.addEventListener('round_resolved', onResolved);
     return () => window.removeEventListener('round_resolved', onResolved);
-  }, [roundNumber, roomId]);
-
-  useEffect(() => {
-    // Seguridad: Si nos quedamos bloqueados en isResolving por más de 12 segundos, forzar reset.
-    if (isResolving) {
-      const timer = setTimeout(() => setIsResolving(false), 12000);
-      return () => clearTimeout(timer);
-    }
-  }, [isResolving]);
+  }, []);
 
   useEffect(() => { logEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [logs]);
 
@@ -255,53 +251,35 @@ export function GameBoard() {
     if (isHost && !isResolving && players.length > 0 && readyPlayers.size >= players.length) {
       const triggerResolve = async () => {
         if (!isResolving) {
-          setIsResolving(true); // Bloqueo local inmediato
+          setIsResolving(true);
           await sendRoundResolving();
-          new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3').play().catch(() => {});
           roundEngine.resolveRound(roomId!, roundNumber).finally(() => {});
         }
       };
-      
       const timer = setTimeout(triggerResolve, 500);
       return () => clearTimeout(timer);
     }
   }, [readyPlayers.size, players.length, isHost, isResolving, roomId, roundNumber]);
 
   useEffect(() => {
-    // Sincronizar acciones reveladas con el historial (last_action)
-    // Solo actualizamos si no estamos en medio de una resolución
-    if (!isResolving) {
-      setRevealedActions(prev => {
-        const synced = { ...prev };
-        players.forEach(p => {
-          // Si el jugador ya está listo, NO queremos mostrar ninguna acción revelada
-          if (readyPlayers.has(p.id)) {
-            synced[p.id] = ''; 
-          } else {
-            // Si no está listo, restauramos su última acción para que sea visible
-            synced[p.id] = (p as any).last_action || '';
-          }
-        });
-        return synced;
-      });
-    }
-  }, [players, isResolving, readyPlayers]);
-
-  useEffect(() => {
-    // Al cambiar de ronda real (Host incrementa round_number)
+    // Nueva ronda: resetear estado de jugabilidad
+    // Las fichas volverán a mostrar last_action del nuevo roundNumber automáticamente
+    // porque chipPhase vuelve a 'playing' y la condición de render usa p.last_action
     setSelectedAction(null);
     setTimeLeft(30);
     setPurchased([]);
     setReadyPlayers(new Set());
+    setIsResolving(false);
+    setChipPhase('playing');
+    setRevealedActions({});
 
     const intervalId = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(intervalId);
           if (isHost && !isResolving) {
-            setIsResolving(true); // Bloqueo local inmediato
+            setIsResolving(true);
             sendRoundResolving().then(() => {
-              new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3').play().catch(() => {});
               roundEngine.resolveRound(roomId!, roundNumber).finally(() => {});
             });
           }
@@ -377,6 +355,20 @@ export function GameBoard() {
           </div>
 
           <div className="flex items-center gap-2">
+            {isHost && (
+              <button 
+                onClick={async () => { 
+                  if(window.confirm('¿Terminar la partida anticipadamente?')) {
+                    new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3').play().catch(() => {});
+                    await supabase.from('mafia_rooms').update({ status: 'finished' }).eq('id', roomId);
+                  }
+                }} 
+                title="Terminar Partida"
+                className="bg-black/80 text-red-500 p-3 rounded-xl border border-red-500/40 shadow-xl hover:bg-red-500/20 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            )}
             <button onClick={() => { new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3').play().catch(() => {}); setShowLogs(true); }} className="lg:hidden bg-black/80 text-poker-gold p-3 rounded-xl border border-poker-gold/40 shadow-xl"><History size={20} /></button>
             <button onClick={() => { new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3').play().catch(() => {}); setShowStats(true); }} className="bg-black/80 text-poker-gold p-3 rounded-xl border border-poker-gold/40 shadow-xl"><BarChart2 size={20} /></button>
             <button onClick={() => { new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3').play().catch(() => {}); setShowShop(true); }} className="bg-black/80 text-poker-gold p-3 rounded-xl border border-poker-gold/40 shadow-xl"><ShoppingBag size={20} /></button>
@@ -404,7 +396,7 @@ export function GameBoard() {
           </AnimatePresence>
            <h2 className="text-poker-gold text-[8px] sm:text-xs font-black uppercase tracking-[0.4em] italic mb-1">BOTÍN ACUMULADO</h2>
           <div className="relative">
-            <motion.div key={globalPool} initial={{ scale: 0.9 }} animate={{ scale: [0.9, 1.05, 1] }} className="text-3xl sm:text-7xl font-black text-white italic drop-shadow-[0_0_20px_rgba(255,255,255,0.4)] tracking-tighter">
+            <motion.div key={globalPool} initial={{ scale: 0.9 }} animate={{ scale: [0.9, 1.05, 1] }} className="text-3xl sm:text-5xl font-black text-white italic drop-shadow-[0_0_20px_rgba(255,255,255,0.4)] tracking-tighter">
               ${globalPool.toLocaleString()}
             </motion.div>
             <AnimatePresence>
@@ -414,20 +406,48 @@ export function GameBoard() {
         </div>
 
         {/* MESA DE JUEGO */}
-        <div className="flex-1 relative flex flex-wrap items-center justify-center gap-4 sm:gap-12 min-h-0 py-4 px-2 overflow-y-auto scrollbar-hide">
+        <div className="flex-1 relative flex flex-wrap items-center justify-center gap-4 sm:gap-20 min-h-0 py-2 px-2 overflow-y-auto scrollbar-hide">
           {playerGroups.map((group, groupIdx) => (
-            <div key={`group-${groupIdx}`} className="relative w-48 h-48 sm:w-72 sm:h-72 rounded-3xl border-2 border-poker-gold/10 bg-black/5 flex items-center justify-center">
+            <div key={`group-${groupIdx}`} className="relative w-48 h-48 sm:w-80 sm:h-80 rounded-[3rem] border-2 border-poker-gold/10 bg-black/20 backdrop-blur-sm flex items-center justify-center">
                 {group.map((p, i) => {
                   const pAngle = (i / group.length) * (2 * Math.PI) - (Math.PI / 2);
-                  const pRadius = isMobile ? 65 : 110; // Radio aumentado para evitar colisiones
+                  const pRadius = isMobile ? 65 : 125; // Radio aumentado para aprovechar el contenedor más grande
                   const px = Math.cos(pAngle) * pRadius;
                   const py = Math.sin(pAngle) * pRadius;
-                  const hasAction = !!revealedActions[p.id];
+                  // === LÓGICA LIMPIA DE CHIP ===
+                  // Determinar qué muestra la cara trasera:
+                  // - En 'revealed': acción de esta ronda (revealedActions)
+                  // - En 'playing': acción pasada (last_action del jugador)
+                  const backIcon = chipPhase === 'revealed'
+                    ? revealedActions[p.id]
+                    : (p as any).last_action || '';
+
+                  // La ficha se gira cuando:
+                  // - chipPhase === 'revealed' → todos girados mostrando acción actual
+                  // - chipPhase === 'playing' && player NO está listo && tiene acción pasada → muestra last_action
                   const isReady = readyPlayers.has(p.id);
+                  const isFlipped =
+                    chipPhase === 'revealed'
+                    || (chipPhase === 'playing' && !isReady && !!backIcon);
+
+                  // Checkmark: visible solo cuando el jugador eligió Y estamos en fase playing
+                  const showCheck = isReady && chipPhase === 'playing';
+
                   const change = playerChanges[p.id];
 
                   return (
-                    <motion.div key={p.id} initial={{ x: px, y: py }} className="absolute z-30">
+                    // Posición centrada: left/top al 50% del contenedor + offset circular
+                    // CSS transition para suavizar el intercambio entre rondas
+                    <div
+                      key={p.id}
+                      className="absolute z-30"
+                      style={{
+                        left: '50%',
+                        top: '50%',
+                        transform: `translate(calc(-50% + ${px}px), calc(-50% + ${py}px))`,
+                        transition: 'transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                      }}
+                    >
                       <div className="flex flex-col items-center relative">
                         {/* ANIMACIÓN DE DINERO EN LA FICHA */}
                         <AnimatePresence>
@@ -435,28 +455,42 @@ export function GameBoard() {
                         </AnimatePresence>
 
                         <div className="relative w-10 h-10 sm:w-16 sm:h-16 [perspective:1000px]">
-                          <motion.div 
-                            className="w-full h-full relative [transform-style:preserve-3d]" 
-                            animate={{ rotateY: (isResolving && hasAction) || (!isReady && hasAction) ? 180 : 0 }} 
+                          <motion.div
+                            className="w-full h-full relative [transform-style:preserve-3d]"
+                            animate={{ rotateY: isFlipped ? 180 : 0 }}
                             transition={{ duration: 0.6, type: 'spring' }}
                           >
-                            <div className={`absolute inset-0 backface-hidden rounded-full border-2 sm:border-4 ${p.id === currentPlayer.id ? 'border-blue-400' : p.is_capo ? 'border-poker-gold shadow-[0_0_10px_#D4AF37]' : 'border-white/20'} bg-gray-900 flex items-center justify-center text-[10px] sm:text-xl font-black text-white`}>{p.name[0].toUpperCase()}</div>
-                            <div className={`absolute inset-0 backface-hidden rounded-full border-2 sm:border-4 ${p.is_capo ? 'border-poker-gold' : 'border-white/20'} bg-gray-950 flex items-center justify-center [transform:rotateY(180deg)]`}>{getActionIcon(revealedActions[p.id], isMobile ? 18 : 28)}</div>
+                            {/* Cara frontal: inicial del nombre */}
+                            <div className={`absolute inset-0 backface-hidden rounded-full border-2 sm:border-4 ${p.id === currentPlayer.id ? 'border-blue-400' : p.is_capo ? 'border-poker-gold shadow-[0_0_10px_#D4AF37]' : 'border-white/20'} bg-gray-900 flex items-center justify-center text-[10px] sm:text-xl font-black text-white`}>
+                              {p.name[0].toUpperCase()}
+                            </div>
+                            {/* Cara trasera: icono de acción */}
+                            <div className={`absolute inset-0 backface-hidden rounded-full border-2 sm:border-4 ${p.is_capo ? 'border-poker-gold' : 'border-white/20'} bg-gray-950 flex items-center justify-center [transform:rotateY(180deg)]`}>
+                              {getActionIcon(backIcon, isMobile ? 18 : 28)}
+                            </div>
                           </motion.div>
+
                           {p.is_capo && <Crown className="absolute -top-6 sm:-top-10 left-1/2 -translate-x-1/2 w-4 h-4 sm:w-8 sm:h-8 text-poker-gold drop-shadow-[0_0_8px_rgba(212,175,55,0.6)]" />}
-                          
+
+                          {/* Checkmark: jugador listo y en fase playing */}
                           <AnimatePresence>
-                            {isReady && !isResolving && (
-                              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 bg-green-500 text-white rounded-full p-0.5 sm:p-1 border-2 border-black z-40 shadow-lg"><Check size={isMobile ? 10 : 14} strokeWidth={4} /></motion.div>
+                            {showCheck && (
+                              <motion.div
+                                initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
+                                className="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 bg-green-500 text-white rounded-full p-0.5 sm:p-1 border-2 border-black z-40 shadow-lg"
+                              >
+                                <Check size={isMobile ? 10 : 14} strokeWidth={4} />
+                              </motion.div>
                             )}
                           </AnimatePresence>
                         </div>
+
                         <div className="mt-1 bg-black/90 px-2 py-0.5 rounded-lg border border-white/10 flex flex-col items-center">
                           <span className="text-[7px] sm:text-[9px] font-black text-white uppercase">{p.is_incognito ? '???' : p.name.split(' ')[0]}</span>
                           {currentPlayer.has_accountant && <span className="text-[6px] sm:text-[8px] text-green-400 font-bold">${p.balance}</span>}
                         </div>
                       </div>
-                    </motion.div>
+                    </div>
                   );
                 })}
               </div>
@@ -464,7 +498,7 @@ export function GameBoard() {
         </div>
 
         {/* ACCIONES */}
-        <div className="mt-auto flex justify-center gap-2 sm:gap-8 p-4 sm:p-8 z-30">
+        <div className="mt-auto flex justify-center gap-2 sm:gap-4 p-2 sm:p-4 z-30">
           <ActionCard label="Cooperar" icon={<Handshake />} selected={selectedAction === 'cooperate'} disabled={!!selectedAction || isResolving} onClick={() => handleAction('cooperate')} color="from-blue-600 to-blue-950" isMobile={isMobile} />
           <ActionCard label="Traicionar" icon={<Revolver />} selected={selectedAction === 'betray'} disabled={!!selectedAction || isResolving} onClick={() => handleAction('betray')} color="from-red-700 to-red-950" isMobile={isMobile} />
           <ActionCard label="Trampa" icon={<UserX />} selected={selectedAction === 'trap'} disabled={!!selectedAction || isResolving} onClick={() => handleAction('trap')} color="from-purple-700 to-purple-950" isMobile={isMobile} />

@@ -87,6 +87,24 @@ export const roundEngine = {
       await supabase.from('mafia_actions').insert(defaultActions);
     }
 
+    // 1. Verificación de seguridad: ¿Ya se resolvió esta ronda?
+    const { count } = await supabase
+      .from('mafia_logs')
+      .select('*', { count: 'exact', head: true })
+      .eq('room_id', roomId)
+      .eq('round_number', roundNumber);
+
+    if (count && count > 0) {
+      console.log(`Ronda ${roundNumber} ya tiene logs. Asegurando que la habitación avance...`);
+      // Si ya hay logs, significa que la lógica ya corrió. 
+      // Forzamos el avance de la habitación por si se quedó trabada.
+      await supabase.from('mafia_rooms').update({ 
+        round_number: roundNumber + 1,
+        status: 'playing' 
+      }).eq('id', roomId).eq('round_number', roundNumber);
+      return;
+    }
+
     const { data: allActions } = await supabase
       .from('mafia_actions')
       .select('*')
@@ -279,48 +297,58 @@ export const roundEngine = {
     }
 
     // 9. Actualizar estadísticas acumuladas
-    for (const [pid, delta] of Object.entries(statDeltas)) {
-      const { data: existing } = await supabase.from('mafia_player_stats')
-        .select('*').eq('room_id', roomId).eq('player_id', pid).single();
+    // 9. Actualizar estadísticas (OPCIONAL - Protegido contra errores 401/406)
+    try {
+      for (const [pid, delta] of Object.entries(statDeltas)) {
+        const { data: existing } = await supabase.from('mafia_player_stats')
+          .select('*').eq('room_id', roomId).eq('player_id', pid).single();
 
-      if (existing) {
-        await supabase.from('mafia_player_stats').update({
-          total_cooperate: existing.total_cooperate + delta.cooperate,
-          total_betray: existing.total_betray + delta.betray,
-          total_trap: existing.total_trap + delta.trap,
-          total_earned: existing.total_earned + delta.earned,
-          total_lost: existing.total_lost + delta.lost,
-          times_betrayed: existing.times_betrayed + delta.betrayed,
-          times_trapped: existing.times_trapped + delta.trapped,
-          updated_at: new Date().toISOString(),
-        }).eq('id', existing.id);
-      } else {
-        await supabase.from('mafia_player_stats').insert({
-          room_id: roomId,
-          player_id: pid,
-          player_name: delta.name,
-          total_cooperate: delta.cooperate,
-          total_betray: delta.betray,
-          total_trap: delta.trap,
-          total_earned: delta.earned,
-          total_lost: delta.lost,
-          times_betrayed: delta.betrayed,
-          times_trapped: delta.trapped,
-        });
+        if (existing) {
+          await supabase.from('mafia_player_stats').update({
+            total_cooperate: existing.total_cooperate + delta.cooperate,
+            total_betray: existing.total_betray + delta.betray,
+            total_trap: existing.total_trap + delta.trap,
+            total_earned: existing.total_earned + delta.earned,
+            total_lost: existing.total_lost + delta.lost,
+            times_betrayed: existing.times_betrayed + delta.betrayed,
+            times_trapped: existing.times_trapped + delta.trapped,
+            updated_at: new Date().toISOString(),
+          }).eq('id', existing.id);
+        } else {
+          await supabase.from('mafia_player_stats').insert({
+            room_id: roomId,
+            player_id: pid,
+            player_name: delta.name,
+            total_cooperate: delta.cooperate,
+            total_betray: delta.betray,
+            total_trap: delta.trap,
+            total_earned: delta.earned,
+            total_lost: delta.lost,
+            times_betrayed: delta.betrayed,
+            times_trapped: delta.trapped,
+          });
+        }
       }
+    } catch (e) {
+      console.warn("Error en estadísticas, continuando resolución...", e);
     }
 
     // 10. Elegir nuevo evento para la siguiente ronda
     const nextEvent = pickRandomEvent();
 
-    // 11. Actualizar Capo
-    const sortedPlayers = Object.entries(playerUpdates).sort((a, b) => b[1].balance - a[1].balance);
-    const topPlayerId = sortedPlayers[0]?.[0];
-    await supabase.from('mafia_players').update({ is_capo: false }).eq('room_id', roomId);
-    if (topPlayerId) {
-      await supabase.from('mafia_players').update({ is_capo: true }).eq('id', topPlayerId);
+    // 11. Actualizar Capo (OPCIONAL)
+    try {
+      const sortedPlayers = Object.entries(playerUpdates).sort((a, b) => b[1].balance - a[1].balance);
+      const topPlayerId = sortedPlayers[0]?.[0];
+      await supabase.from('mafia_players').update({ is_capo: false }).eq('room_id', roomId);
+      if (topPlayerId) {
+        await supabase.from('mafia_players').update({ is_capo: true }).eq('id', topPlayerId);
+      }
+    } catch (e) {
+       console.warn("Error al actualizar Capo:", e);
     }
 
+    // 12. PERSISTENCIA CRÍTICA: Logs y Habitación
     if (logs.length > 0) {
       await supabase.from('mafia_logs').insert(logs);
     }
@@ -328,6 +356,16 @@ export const roundEngine = {
     const isGameOver = (roundNumber + 1) > (room.max_rounds || 10);
     const nextStatus = isGameOver ? 'finished' : 'playing';
 
+    // Calcular mapa de acciones para la revelación de fichas
+    const actionsMap = Object.fromEntries(
+      Object.entries(playerUpdates)
+        .filter(([, u]) => u.last_action)
+        .map(([pid, u]) => [pid, u.last_action])
+    );
+    // Determinar si hubo al menos una traición para disparar el sonido
+    const hasBetrayal = allActions.some(a => a.action_type === 'betray');
+
+    // ACTUALIZACIÓN FINAL DE LA HABITACIÓN (sin columnas extras)
     await supabase.from('mafia_rooms').update({
       global_pool: newGlobalPool,
       round_number: roundNumber + 1,
@@ -336,14 +374,16 @@ export const roundEngine = {
       active_event_label: nextEvent.id !== 'none' ? nextEvent.label : null,
     }).eq('id', roomId);
 
-    await supabase.channel(`room:${roomId}`).send({
+    // BROADCAST: Enviamos el payload de resolución por el canal existente
+    // El host ya está suscrito a este canal, por lo que el send() funcionará directamente.
+    const broadcastChannel = supabase.channel(`room:${roomId}`);
+    await broadcastChannel.send({
       type: 'broadcast',
       event: 'round_resolved',
       payload: {
         round: roundNumber,
-        globalPool: newGlobalPool,
-        status: nextStatus,
-        activeEvent: nextEvent.id !== 'none' ? nextEvent : null,
+        actions: actionsMap,
+        hasBetrayal,
       },
     });
   },

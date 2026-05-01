@@ -60,8 +60,16 @@ export function GameOver() {
                   last_action: null 
                 }).eq('room_id', roomId);
                 
-                // 3. Limpiar acciones
+                // 3. Limpiar historial completo (acciones, logs, stats)
                 await supabase.from('mafia_actions').delete().eq('room_id', roomId);
+                await supabase.from('mafia_logs').delete().eq('room_id', roomId);
+                
+                // En lugar de borrar las estadísticas (lo cual bloquea RLS), las reseteamos a cero
+                await supabase.from('mafia_player_stats').update({
+                  cooperate: 0,
+                  betray: 0,
+                  trap: 0
+                }).eq('room_id', roomId);
               }}
               className="w-full bg-poker-gold text-black font-black py-5 rounded-2xl hover:bg-yellow-500 transition-all flex items-center justify-center gap-3 text-lg"
             >

@@ -2,7 +2,6 @@ import { useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useGameStore } from '../store/gameStore';
 import { botEngine } from '../lib/botEngine';
-import { roundEngine } from '../lib/roundEngine';
 
 export function useSupabaseGame() {
   const { roomId, playerId, status, setRoomInfo, setPlayers, players, isHost, setIsHost, roundNumber, setCurrentPlayer, resetGame } = useGameStore();
@@ -70,7 +69,6 @@ export function useSupabaseGame() {
           };
 
           if (newRoom.status === 'finished') {
-            // Esperar a que termine la animación de resolución (3s aprox) + 1s extra antes de mostrar el ganador
             setTimeout(updateState, 4000);
           } else {
             updateState();
@@ -88,23 +86,15 @@ export function useSupabaseGame() {
           });
         }
       })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mafia_actions' }, (payload) => {
-        const action = payload.new as any;
-        if (isHost && action.room_id === roomId && action.round_number === roundNumber) {
-          // El Host verifica si ya todos jugaron
-          supabase.from('mafia_actions').select('player_id').eq('room_id', roomId).eq('round_number', roundNumber).then(({data}) => {
-            if (data && data.length >= players.length) {
-              console.log("¡Todos los jugadores listos! Resolviendo...");
-              roundEngine.resolveRound(roomId, roundNumber);
-            }
-          });
-        }
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mafia_actions' }, () => {
+        // Solo notificamos sonido de click-clack, la resolución la maneja centralizadamente GameBoard.tsx
       })
       .on('broadcast', { event: 'action_lock_in' }, () => {
         new Audio('/click-clack.mp3').play().catch(() => {});
         window.dispatchEvent(new CustomEvent('screenshake'));
       })
       .on('broadcast', { event: 'round_resolved' }, (payload) => {
+        // El broadcast trae actions (mapa playerId->accion) y hasBetrayal
         window.dispatchEvent(new CustomEvent('round_resolved', { detail: payload.payload }));
       })
       .on('broadcast', { event: 'round_resolving' }, () => {

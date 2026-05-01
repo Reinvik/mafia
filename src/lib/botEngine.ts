@@ -41,7 +41,8 @@ export const botEngine = {
     if (bots.length === 0) return;
 
     for (const bot of bots) {
-      const delay = Math.floor(Math.random() * 13000) + 2000;
+      // Delay aleatorio entre 1.5s y 7s (antes que el temporizador de 30s resuelva)
+      const delay = Math.floor(Math.random() * 5500) + 1500;
       
       setTimeout(async () => {
         const { data: existing } = await supabase
