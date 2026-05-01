@@ -107,6 +107,9 @@ export function useSupabaseGame() {
       .on('broadcast', { event: 'round_resolved' }, () => {
         window.dispatchEvent(new CustomEvent('round_resolved'));
       })
+      .on('broadcast', { event: 'round_resolving' }, () => {
+        window.dispatchEvent(new CustomEvent('round_resolving'));
+      })
       .subscribe((status) => {
         console.log(`Estado de suscripción para sala ${roomId}:`, status);
       });
@@ -135,5 +138,14 @@ export function useSupabaseGame() {
     });
   };
 
-  return { sendActionLockIn };
+  const sendRoundResolving = async () => {
+    if(!roomId) return;
+    await supabase.channel(`room:${roomId}`).send({
+      type: 'broadcast',
+      event: 'round_resolving',
+      payload: { timestamp: Date.now() }
+    });
+  };
+
+  return { sendActionLockIn, sendRoundResolving };
 }

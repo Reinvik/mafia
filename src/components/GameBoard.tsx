@@ -37,12 +37,19 @@ export function GameBoard() {
   const [revealedActions, setRevealedActions] = useState<Record<string, string>>(() => {
     return players.reduce((acc, p) => ({ ...acc, [p.id]: (p as any).last_action || '' }), {});
   });
-  const [readyPlayers, setReadyPlayers] = useState<Set<string>>(new Set());
-  const [activeEvent, setActiveEvent] = useState<{ id: string; label: string } | null>(null);
-  const [showStats, setShowStats] = useState(false);
   const [stats, setStats] = useState<any[]>([]);
   const logEndRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+  const { sendActionLockIn, sendRoundResolving } = useSupabaseGame();
+
+  useEffect(() => {
+    const onResolving = () => {
+      setIsResolving(true);
+      setRevealedActions({}); // Ocultar todo al empezar a resolver
+    };
+    window.addEventListener('round_resolving', onResolving);
+    return () => window.removeEventListener('round_resolving', onResolving);
+  }, []);
 
   // Estados para animaciones de flujo de dinero
   const [poolChange, setPoolChange] = useState<{ amount: number; type: 'gain' | 'loss' } | null>(null);
@@ -199,19 +206,22 @@ export function GameBoard() {
           mapping[a.player_id] = a.action_type;
           if (a.action_type === 'betray') hasBetrayal = true;
         });
+        
+        // REVELAR TODO AL MISMO TIEMPO
         setRevealedActions(mapping);
+        
         if (hasBetrayal) {
           new Audio('/gunshot.mp3').play().catch(() => {});
         }
+
+        // Mantener visualización unos segundos antes de permitir nueva ronda
+        setTimeout(() => {
+          setIsResolving(false);
+        }, 4000);
       }
     };
 
-    // Al cambiar de ronda (normal)
-    if (roundNumber > 1) {
-      fetchResults(roundNumber - 1);
-    }
-
-    // Escuchar broadcast de resolución (para respuesta inmediata y última ronda)
+    // Escuchar broadcast de resolución
     const onResolved = () => fetchResults(roundNumber);
     window.addEventListener('round_resolved', onResolved);
     return () => window.removeEventListener('round_resolved', onResolved);
@@ -222,10 +232,9 @@ export function GameBoard() {
   // Auto-resolución cuando todos están listos (Solo Host)
   useEffect(() => {
     if (isHost && !isResolving && players.length > 0 && readyPlayers.size >= players.length) {
-      // Pequeño delay para que se escuche el último click-clack
-      setTimeout(() => {
+      setTimeout(async () => {
         if (!isResolving) {
-          setIsResolving(true);
+          await sendRoundResolving();
           new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3').play().catch(() => {});
           roundEngine.resolveRound(roomId!, roundNumber).finally(() => {});
         }
@@ -234,7 +243,7 @@ export function GameBoard() {
   }, [readyPlayers.size, players.length, isHost, isResolving, roomId, roundNumber]);
 
   useEffect(() => {
-    setIsResolving(false);
+    // Al cambiar de ronda real
     setSelectedAction(null);
     setTimeLeft(30);
     setPurchased([]);
@@ -245,17 +254,10 @@ export function GameBoard() {
         if (prev <= 1) {
           clearInterval(intervalId);
           if (isHost && !isResolving) {
-            setIsResolving(true);
-            new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3').play().catch(() => {});
-            supabase.from('mafia_actions').select('player_id, action_type').eq('room_id', roomId!).eq('round_number', roundNumber)
-              .then(({ data }) => {
-                if (data) {
-                  const mapping: Record<string, string> = {};
-                  data.forEach(a => mapping[a.player_id] = a.action_type);
-                  setRevealedActions(mapping);
-                }
-                roundEngine.resolveRound(roomId!, roundNumber).finally(() => {});
-              });
+            sendRoundResolving().then(() => {
+              new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3').play().catch(() => {});
+              roundEngine.resolveRound(roomId!, roundNumber).finally(() => {});
+            });
           }
           return 0;
         }
@@ -398,7 +400,7 @@ export function GameBoard() {
                           {p.is_capo && <Crown className="absolute -top-6 sm:-top-10 left-1/2 -translate-x-1/2 w-4 h-4 sm:w-8 sm:h-8 text-poker-gold drop-shadow-[0_0_8px_rgba(212,175,55,0.6)]" />}
                           
                           <AnimatePresence>
-                            {isReady && !isResolving && !hasAction && (
+                            {isReady && !isResolving && (
                               <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 bg-green-500 text-white rounded-full p-0.5 sm:p-1 border-2 border-black z-40 shadow-lg"><Check size={isMobile ? 10 : 14} strokeWidth={4} /></motion.div>
                             )}
                           </AnimatePresence>
