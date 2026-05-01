@@ -26,7 +26,7 @@ interface GameLog {
 
 export function GameBoard() {
   const { globalPool, roundNumber, maxRounds, players, currentPlayer, roomId, isHost } = useGameStore();
-  const { sendActionLockIn } = useSupabaseGame();
+
   const [timeLeft, setTimeLeft] = useState(30);
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
   const [showShop, setShowShop] = useState(false);
@@ -37,6 +37,9 @@ export function GameBoard() {
   const [revealedActions, setRevealedActions] = useState<Record<string, string>>(() => {
     return players.reduce((acc, p) => ({ ...acc, [p.id]: (p as any).last_action || '' }), {});
   });
+  const [readyPlayers, setReadyPlayers] = useState<Set<string>>(new Set());
+  const [activeEvent, setActiveEvent] = useState<{ id: string; label: string } | null>(null);
+  const [showStats, setShowStats] = useState(false);
   const [stats, setStats] = useState<any[]>([]);
   const logEndRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
