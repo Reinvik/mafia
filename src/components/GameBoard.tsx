@@ -274,8 +274,11 @@ export function GameBoard() {
       setRevealedActions(prev => {
         const synced = { ...prev };
         players.forEach(p => {
-          // Si el jugador no está listo para esta ronda, mostrar su última acción conocida
-          if (!readyPlayers.has(p.id)) {
+          // Si el jugador ya está listo, NO queremos mostrar ninguna acción revelada
+          if (readyPlayers.has(p.id)) {
+            synced[p.id] = ''; 
+          } else {
+            // Si no está listo, restauramos su última acción para que sea visible
             synced[p.id] = (p as any).last_action || '';
           }
         });
