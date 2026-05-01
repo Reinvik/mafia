@@ -252,7 +252,24 @@ export function GameBoard() {
   }, [readyPlayers.size, players.length, isHost, isResolving, roomId, roundNumber]);
 
   useEffect(() => {
-    // Al cambiar de ronda real
+    // Sincronizar acciones reveladas con el historial (last_action)
+    // Solo actualizamos si no estamos en medio de una resolución
+    if (!isResolving) {
+      setRevealedActions(prev => {
+        const synced = { ...prev };
+        players.forEach(p => {
+          // Si el jugador no está listo para esta ronda, mostrar su última acción conocida
+          if (!readyPlayers.has(p.id)) {
+            synced[p.id] = (p as any).last_action || '';
+          }
+        });
+        return synced;
+      });
+    }
+  }, [players, isResolving, readyPlayers]);
+
+  useEffect(() => {
+    // Al cambiar de ronda real (Host incrementa round_number)
     setSelectedAction(null);
     setTimeLeft(30);
     setPurchased([]);
