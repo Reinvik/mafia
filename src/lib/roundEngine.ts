@@ -384,8 +384,20 @@ export const roundEngine = {
           });
         }
       }
+      
+      // Log de éxito para diagnóstico
+      logs.push({
+        room_id: roomId, round_number: roundNumber,
+        message: `📊 Estadísticas de ${Object.keys(statDeltas).length} jugadores actualizadas.`,
+        type: 'info'
+      });
     } catch (e) {
-      console.warn("Error en estadísticas, continuando resolución...", e);
+      console.warn("Error en estadísticas:", e);
+      logs.push({
+        room_id: roomId, round_number: roundNumber,
+        message: `⚠️ Fallo crítico al guardar estadísticas: ${e instanceof Error ? e.message : 'Error desconocido'}`,
+        type: 'danger'
+      });
     }
 
     // 10. Elegir nuevo evento para la siguiente ronda
