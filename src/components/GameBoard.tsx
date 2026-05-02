@@ -4,7 +4,7 @@ import { useGameStore } from '../store/gameStore';
 import { useSupabaseGame } from '../hooks/useSupabaseGame';
 import { supabase } from '../lib/supabase';
 import { roundEngine } from '../lib/roundEngine';
-import { UserX, Crown, ShoppingBag, EyeOff, Search, History, X, HelpCircle, Check, BarChart2, Zap, Handshake } from 'lucide-react';
+import { Users, LogOut, Check, ShoppingBag, History, BarChart2, Crown, Zap, X, RotateCw } from 'lucide-react';
 
 const Revolver = ({ size = 24, className = "" }: { size?: number, className?: string }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -364,6 +364,13 @@ export function GameBoard() {
           </div>
 
           <div className="flex items-center gap-2">
+            <button 
+              onClick={() => window.location.reload()} 
+              title="Actualizar Partida"
+              className="bg-black/80 text-white p-3 rounded-xl border border-white/20 shadow-xl hover:bg-white/10 transition-colors"
+            >
+              <RotateCw size={20} />
+            </button>
             {isHost && (
               <button 
                 onClick={async () => { 

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { useGameStore } from '../store/gameStore';
-import { LogOut, PlayCircle, Sword, UserX, Users, DollarSign, Handshake } from 'lucide-react';
+import { LogOut, PlayCircle, Sword, UserX, Users, DollarSign, Handshake, RotateCw } from 'lucide-react';
 
 export function Lobby() {
   const [name, setName] = useState('');
@@ -92,6 +92,7 @@ export function Lobby() {
           <p className="text-gray-400 mb-8">Tienes una sesión pendiente en la familia. ¿Quieres volver o retirarte?</p>
           <div className="space-y-4">
             <button onClick={() => window.location.reload()} className="w-full bg-poker-gold text-black font-black py-4 rounded-xl hover:bg-yellow-500 flex items-center justify-center gap-2"><PlayCircle /> REANUDAR PARTIDA</button>
+            <button onClick={() => window.location.reload()} className="w-full bg-gray-800 text-white font-bold py-4 rounded-xl hover:bg-gray-700 border border-white/10 flex items-center justify-center gap-2"><RotateCw size={20} /> ACTUALIZAR APP</button>
             <button onClick={() => resetGame()} className="w-full bg-gray-800 text-red-500 font-bold py-4 rounded-xl hover:bg-gray-700 border border-red-500/30 flex items-center justify-center gap-2"><LogOut size={20} /> ABANDONAR Y CERRAR</button>
           </div>
         </motion.div>
