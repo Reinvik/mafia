@@ -111,15 +111,37 @@ export const roundEngine = {
       .eq('room_id', roomId)
       .eq('round_number', roundNumber);
 
-    if (!allActions || allActions.length === 0) return;
+    const safeActions = allActions || [];
 
     // Eliminar acciones duplicadas por jugador (por si un bot o jugador inserta 2 veces por error de red)
     const uniqueActionsMap = new Map();
-    allActions.forEach(a => {
+    safeActions.forEach(a => {
       if (!uniqueActionsMap.has(a.player_id)) {
         uniqueActionsMap.set(a.player_id, a);
       }
     });
+
+    // Auto-completar acciones faltantes con 'cooperate' para que el juego NUNCA se trabe
+    const missingActions: any[] = [];
+    players.forEach(p => {
+      if (!uniqueActionsMap.has(p.id)) {
+        const fallbackAction = {
+          room_id: roomId,
+          round_number: roundNumber,
+          player_id: p.id,
+          target_id: p.id,
+          action_type: 'cooperate'
+        };
+        uniqueActionsMap.set(p.id, fallbackAction);
+        missingActions.push(fallbackAction);
+      }
+    });
+
+    // Si hubo jugadores que no jugaron (se acabó el tiempo), guardamos su 'cooperate' por defecto en BD
+    if (missingActions.length > 0) {
+      await supabase.from('mafia_actions').insert(missingActions);
+    }
+
     const filteredActions = Array.from(uniqueActionsMap.values());
 
     const { data: room } = await supabase.from('mafia_rooms').select('*').eq('id', roomId).single();
