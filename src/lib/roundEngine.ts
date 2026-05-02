@@ -113,6 +113,15 @@ export const roundEngine = {
 
     if (!allActions || allActions.length === 0) return;
 
+    // Eliminar acciones duplicadas por jugador (por si un bot o jugador inserta 2 veces por error de red)
+    const uniqueActionsMap = new Map();
+    allActions.forEach(a => {
+      if (!uniqueActionsMap.has(a.player_id)) {
+        uniqueActionsMap.set(a.player_id, a);
+      }
+    });
+    const filteredActions = Array.from(uniqueActionsMap.values());
+
     const { data: room } = await supabase.from('mafia_rooms').select('*').eq('id', roomId).single();
     if (!room) return;
 
@@ -170,7 +179,7 @@ export const roundEngine = {
 
     groups.forEach((group, groupIdx) => {
       const groupPlayerIds = group.map(p => p.id);
-      const groupActions = allActions.filter(a => groupPlayerIds.includes(a.player_id));
+      const groupActions = filteredActions.filter(a => groupPlayerIds.includes(a.player_id));
       const groupBetrayers = groupActions.filter(a => a.action_type === 'betray');
       const groupTrappers = groupActions.filter(a => a.action_type === 'trap');
       const groupCooperators = groupActions.filter(a => a.action_type === 'cooperate');
@@ -363,7 +372,7 @@ export const roundEngine = {
         .map(([pid, u]) => [pid, u.last_action])
     );
     // Determinar si hubo al menos una traición para disparar el sonido
-    const hasBetrayal = allActions.some(a => a.action_type === 'betray');
+    const hasBetrayal = filteredActions.some(a => a.action_type === 'betray');
 
     // ACTUALIZACIÓN FINAL DE LA HABITACIÓN (sin columnas extras)
     await supabase.from('mafia_rooms').update({
