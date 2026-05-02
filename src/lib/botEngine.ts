@@ -58,7 +58,7 @@ export const botEngine = {
         const decision = this.getDecision(bot, players);
         if (!decision) return;
 
-        const { error } = await supabase.from('mafia_actions').insert([{
+        await supabase.from('mafia_actions').insert([{
           room_id: roomId,
           round_number: roundNumber,
           player_id: bot.id,
