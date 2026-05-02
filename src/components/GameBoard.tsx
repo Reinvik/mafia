@@ -172,9 +172,13 @@ export function GameBoard() {
   // ⚠️ REGLA DE HOOKS: useMemo DEBE estar antes de cualquier early return
   const playerGroups = useMemo(() => {
     const shuffled = [...players].sort((a, b) => {
-      const hashA = (a.id.charCodeAt(0) || 0) + layoutRound;
-      const hashB = (b.id.charCodeAt(0) || 0) + layoutRound;
-      return (hashA % 10) - (hashB % 10);
+      const strA = a.id + layoutRound.toString();
+      const strB = b.id + layoutRound.toString();
+      let hashA = 0;
+      let hashB = 0;
+      for (let i = 0; i < strA.length; i++) hashA = ((hashA << 5) - hashA) + strA.charCodeAt(i);
+      for (let i = 0; i < strB.length; i++) hashB = ((hashB << 5) - hashB) + strB.charCodeAt(i);
+      return hashA - hashB;
     });
     const groups: any[][] = [];
     const n = shuffled.length;
@@ -490,11 +494,11 @@ export function GameBoard() {
                           </AnimatePresence>
                         </div>
 
-                        <div className={`mt-1 bg-black/90 px-2 py-0.5 rounded-lg border ${p.id === currentPlayer.id ? 'border-blue-500/50' : 'border-white/10'} flex flex-col items-center`}>
-                          <span className={`text-[7px] sm:text-[9px] font-black uppercase ${p.id === currentPlayer.id ? 'text-blue-400' : 'text-white'}`}>
-                            {p.id === currentPlayer.id ? 'TÚ' : (p.is_incognito ? '???' : p.name.split(' ')[0])}
+                        <div className={`mt-1 max-w-[80px] sm:max-w-[120px] bg-black/90 px-2 py-0.5 rounded-lg border ${p.id === currentPlayer.id ? 'border-blue-500/50' : 'border-white/10'} flex flex-col items-center`}>
+                          <span className={`text-[7px] sm:text-[9px] font-black uppercase truncate w-full text-center ${p.id === currentPlayer.id ? 'text-blue-400' : 'text-white'}`}>
+                            {p.id === currentPlayer.id ? p.name : (p.is_incognito ? '???' : p.name)}
                           </span>
-                          {currentPlayer.has_accountant && <span className="text-[6px] sm:text-[8px] text-green-400 font-bold">${p.balance}</span>}
+                          <span className="text-[6px] sm:text-[8px] text-green-400 font-bold">${p.balance.toLocaleString()}</span>
                         </div>
                       </div>
                     </div>
