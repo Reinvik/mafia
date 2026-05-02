@@ -367,10 +367,8 @@ export function GameBoard() {
             {isHost && (
               <button 
                 onClick={async () => { 
-                  if(window.confirm('¿Terminar la partida anticipadamente?')) {
-                    new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3').play().catch(() => {});
-                    await supabase.from('mafia_rooms').update({ status: 'finished' }).eq('id', roomId);
-                  }
+                  new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3').play().catch(() => {});
+                  await supabase.from('mafia_rooms').update({ status: 'finished' }).eq('id', roomId);
                 }} 
                 title="Terminar Partida"
                 className="bg-black/80 text-red-500 p-3 rounded-xl border border-red-500/40 shadow-xl hover:bg-red-500/20 transition-colors"

@@ -104,7 +104,14 @@ export function Lobby() {
       <div className="max-w-6xl w-full flex flex-col lg:flex-row gap-6 lg:gap-16 items-start">
         
         {/* TÍTULO MÓVIL (Solo se ve en móvil arriba de todo) */}
-        <div className="lg:hidden w-full text-center mb-2">
+        <div className="lg:hidden w-full text-center mb-6">
+          <motion.div 
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="flex justify-center mb-4"
+          >
+            <img src="/pwa-192x192.png" alt="Logo Alta Traición" className="w-24 h-24 rounded-3xl shadow-[0_0_30px_rgba(212,175,55,0.3)] border-2 border-poker-gold/30" />
+          </motion.div>
           <motion.h1 
             animate={{ textShadow: ["0 0 10px #D4AF37", "0 0 20px #D4AF37", "0 0 10px #D4AF37"] }} 
             transition={{ repeat: Infinity, duration: 2 }} 
@@ -122,6 +129,13 @@ export function Lobby() {
           className="order-2 lg:order-1 flex-1 space-y-6 lg:space-y-10 py-4 lg:py-12"
         >
           <div className="hidden lg:block text-left">
+            <motion.div 
+              initial={{ x: -50, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              className="mb-8"
+            >
+              <img src="/pwa-192x192.png" alt="Logo Alta Traición" className="w-32 h-32 rounded-[2.5rem] shadow-[0_0_50px_rgba(212,175,55,0.2)] border-2 border-poker-gold/20" />
+            </motion.div>
             <motion.h1 
               animate={{ textShadow: ["0 0 10px #D4AF37", "0 0 20px #D4AF37", "0 0 10px #D4AF37"] }} 
               transition={{ repeat: Infinity, duration: 2 }} 
