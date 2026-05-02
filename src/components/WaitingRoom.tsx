@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../store/gameStore';
 import { supabase } from '../lib/supabase';
 import { botEngine } from '../lib/botEngine';
-import { Users, Play, Bot, Copy, Share2, UserMinus } from 'lucide-react';
+import { Users, Play, Bot, Copy, Share2, UserMinus, LogOut } from 'lucide-react';
 
 export function WaitingRoom() {
   const { players, roomId, isHost, playerId } = useGameStore();
@@ -22,6 +22,23 @@ export function WaitingRoom() {
     if (error) {
       console.error("Error al expulsar:", error);
       alert("No se pudo expulsar al jugador.");
+    }
+  };
+
+  const handleLeaveRoom = async () => {
+    if (!roomId || !playerId) return;
+    if (!confirm("¿Estás seguro de que quieres abandonar la sala?")) return;
+    
+    const { error } = await supabase
+      .from('mafia_players')
+      .delete()
+      .eq('id', playerId);
+      
+    if (error) {
+      console.error("Error al salir:", error);
+    } else {
+      // El store debería limpiarse vía suscripción, pero forzamos reset local para UX inmediata
+      window.location.reload(); 
     }
   };
 
@@ -75,6 +92,9 @@ export function WaitingRoom() {
               </div>
               <button onClick={shareToWhatsApp} className="inline-flex items-center gap-2 bg-green-600/20 px-4 py-2 rounded-xl border border-green-600/50 hover:bg-green-600/40 transition-colors text-green-400 text-xs font-bold uppercase tracking-widest">
                 <Share2 size={14} /> WhatsApp
+              </button>
+              <button onClick={handleLeaveRoom} className="inline-flex items-center gap-2 bg-red-600/20 px-4 py-2 rounded-xl border border-red-600/50 hover:bg-red-600/40 transition-colors text-red-400 text-xs font-bold uppercase tracking-widest ml-auto">
+                <LogOut size={14} /> Salir
               </button>
             </div>
           </div>
