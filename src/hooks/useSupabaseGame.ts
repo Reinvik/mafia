@@ -69,7 +69,7 @@ export function useSupabaseGame() {
           };
 
           if (newRoom.status === 'finished') {
-            setTimeout(updateState, 4000);
+            setTimeout(updateState, 6000);
           } else {
             updateState();
           }
