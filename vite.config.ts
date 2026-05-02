@@ -10,7 +10,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'pwa-192x192.png', 'pwa-512x512.png', 'click-clack.mp3', 'cash-register.mp3'],
+      includeAssets: ['favicon.png', 'pwa-192x192.png', 'pwa-512x512.png', 'click-clack.mp3', 'gunshot.mp3'],
       manifest: {
         name: 'Alta Traición',
         short_name: 'Traición',
