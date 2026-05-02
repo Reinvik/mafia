@@ -50,12 +50,7 @@ export function GameBoard() {
   // Estado para mantener las posiciones fijas hasta que empiece la nueva ronda
   const [layoutRound, setLayoutRound] = useState(roundNumber);
 
-  useEffect(() => {
-    // Solo actualizar el layout cuando la ronda está en juego, no en la resolución
-    if (chipPhase === 'playing') {
-      setLayoutRound(roundNumber);
-    }
-  }, [roundNumber, chipPhase]);
+
 
   useEffect(() => {
     // round_resolving = todos eligieron, bloquear botones (fichas ya muestran ✅)
@@ -117,7 +112,12 @@ export function GameBoard() {
         });
 
 
-        setTimeout(() => setPlayerChanges({}), 4000);
+        setTimeout(() => {
+          setPlayerChanges({});
+          setChipPhase('playing');
+          setRevealedActions({});
+          setLayoutRound(roundNumber);
+        }, 4000);
 
         // 3. Obtener las acciones de la ronda pasada para girar las fichas y el sonido de disparo
         const { data: pastActions } = await supabase.from('mafia_actions')
@@ -277,8 +277,7 @@ export function GameBoard() {
     setPurchased([]);
     setReadyPlayers(new Set());
     setIsResolving(false);
-    setChipPhase('playing');
-    setRevealedActions({});
+    // Nota: chipPhase, revealedActions y layoutRound se resetean al terminar la animación en fetchResolutionData
 
     const intervalId = setInterval(() => {
       setTimeLeft((prev) => {
