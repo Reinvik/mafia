@@ -151,16 +151,27 @@ export const roundEngine = {
     const activeEventId = (room.active_event || 'none') as EventId;
 
     // 3. Estructura de grupos (Barajado dinámico por ronda para rotar oponentes)
-    const shuffledPlayers = [...players].sort((a, b) => {
-      // Usar un hash más agresivo combinando ID y roundNumber
-      const strA = a.id + roundNumber.toString();
-      const strB = b.id + roundNumber.toString();
-      let hashA = 0;
-      let hashB = 0;
-      for (let i = 0; i < strA.length; i++) hashA = ((hashA << 5) - hashA) + strA.charCodeAt(i);
-      for (let i = 0; i < strB.length; i++) hashB = ((hashB << 5) - hashB) + strB.charCodeAt(i);
-      return hashA - hashB;
-    });
+    // 3. Estructura de grupos (Fisher-Yates determinístico con semilla para rotar oponentes)
+    const seedString = roomId + roundNumber.toString();
+    const shuffledPlayers = [...players];
+    
+    // Función para generar un número pseudo-aleatorio basado en el seed
+    let h = 0;
+    for (let i = 0; i < seedString.length; i++) {
+      h = Math.imul(31, h) + seedString.charCodeAt(i) | 0;
+    }
+    
+    const seededRandom = () => {
+      h = Math.imul(h ^ h >>> 16, 0x85ebca6b) | 0;
+      h = Math.imul(h ^ h >>> 13, 0xc2b2ae35) | 0;
+      h = (h ^ h >>> 16) >>> 0;
+      return h / 0xffffffff;
+    };
+
+    for (let i = shuffledPlayers.length - 1; i > 0; i--) {
+      const j = Math.floor(seededRandom() * (i + 1));
+      [shuffledPlayers[i], shuffledPlayers[j]] = [shuffledPlayers[j], shuffledPlayers[i]];
+    }
 
     const groups: any[][] = [];
     const n = shuffledPlayers.length;
