@@ -58,7 +58,30 @@ export function useSupabaseGame() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'mafia_rooms' }, (payload) => {
         const newRoom = payload.new as any;
         if (newRoom.id === roomId) {
-          const updateState = () => {
+          // Si el estado es 'finished', retrasamos SOLO la transición de pantalla, 
+          // pero actualizamos roundNumber y globalPool de inmediato para que GameBoard pueda mostrar la animación de la última ronda.
+          if (newRoom.status === 'finished' && useGameStore.getState().status !== 'finished') {
+            // Actualización inmediata de todo excepto status
+            setRoomInfo({ 
+              id: newRoom.id,
+              status: useGameStore.getState().status, // Mantenemos el estado actual ('playing')
+              globalPool: newRoom.global_pool, 
+              roundNumber: newRoom.round_number,
+              max_rounds: newRoom.max_rounds 
+            });
+            
+            // Retrasar el cambio de status a 'finished' por 6 segundos
+            setTimeout(() => {
+              setRoomInfo({
+                id: newRoom.id,
+                status: 'finished',
+                globalPool: newRoom.global_pool,
+                roundNumber: newRoom.round_number,
+                max_rounds: newRoom.max_rounds
+              });
+            }, 6000);
+          } else {
+            // Actualización normal
             setRoomInfo({ 
               id: newRoom.id, 
               status: newRoom.status, 
@@ -66,12 +89,6 @@ export function useSupabaseGame() {
               roundNumber: newRoom.round_number,
               max_rounds: newRoom.max_rounds 
             });
-          };
-
-          if (newRoom.status === 'finished') {
-            setTimeout(updateState, 6000);
-          } else {
-            updateState();
           }
         }
       })
