@@ -65,14 +65,6 @@ export const botEngine = {
           target_id: decision.target_id,
           action_type: decision.action_type
         }]);
-
-        if (!error) {
-          await supabase.channel(`room:${roomId}`).send({
-            type: 'broadcast',
-            event: 'action_lock_in',
-            payload: { player_id: bot.id }
-          });
-        }
       }, delay);
     }
   }

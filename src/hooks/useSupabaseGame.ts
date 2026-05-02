@@ -119,15 +119,6 @@ export function useSupabaseGame() {
     }, 2000);
   }, [status, roundNumber, isHost, roomId]);
 
-  const sendActionLockIn = async () => {
-    if(!roomId) return;
-    await supabase.channel(`room:${roomId}`).send({
-      type: 'broadcast',
-      event: 'action_lock_in',
-      payload: { timestamp: Date.now() }
-    });
-  };
-
   const sendRoundResolving = async () => {
     if(!roomId) return;
     await supabase.channel(`room:${roomId}`).send({
@@ -137,5 +128,5 @@ export function useSupabaseGame() {
     });
   };
 
-  return { sendActionLockIn, sendRoundResolving };
+  return { sendRoundResolving };
 }

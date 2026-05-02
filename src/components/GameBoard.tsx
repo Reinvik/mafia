@@ -39,7 +39,7 @@ export function GameBoard() {
   const [stats, setStats] = useState<any[]>([]);
   const logEndRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
-  const { sendActionLockIn, sendRoundResolving } = useSupabaseGame();
+  const { sendRoundResolving } = useSupabaseGame();
 
   // === MÁQUINA DE ESTADOS DE FICHAS ===
   type ChipPhase = 'playing' | 'revealed';
@@ -100,40 +100,72 @@ export function GameBoard() {
     }
 
     // 2. Detectar cambios en Jugadores tras resolución
-    if (roundNumber !== prevRoundRef.current) {
-      const newChanges: Record<string, { amount: number; type: 'gain' | 'loss' | 'neutral' }> = {};
-      let hasChangeSound = false;
-      
-      players.forEach(p => {
-        const prevBalance = prevBalancesRef.current[p.id] ?? p.balance;
-        const diff = p.balance - prevBalance;
+    if (roundNumber > 1 && roundNumber !== prevRoundRef.current) {
+      // Ha habido un cambio de ronda. Hacemos un fetch para garantizar que tenemos los datos más recientes
+      // (ya que los mensajes realtime de diferentes tablas llegan en desorden)
+      const fetchResolutionData = async () => {
+        // 1. Obtener los jugadores actualizados (para asegurar que tenemos el balance y last_action finales)
+        const { data: updatedPlayers } = await supabase.from('mafia_players').select('*').eq('room_id', roomId);
+        if (!updatedPlayers) return;
+
+        // 2. Calcular diferencias de dinero para las animaciones flotantes
+        const newChanges: Record<string, { amount: number; type: 'gain' | 'loss' | 'neutral' }> = {};
+        let hasChangeSound = false;
         
-        if (diff !== 0) hasChangeSound = true;
+        updatedPlayers.forEach(p => {
+          const prevBalance = prevBalancesRef.current[p.id] ?? 0; // 0 en la ronda 1
+          const diff = p.balance - prevBalance;
+          
+          if (diff !== 0) hasChangeSound = true;
+          newChanges[p.id] = {
+            amount: Math.abs(diff),
+            type: diff > 0 ? 'gain' : diff < 0 ? 'loss' : 'neutral'
+          };
+          prevBalancesRef.current[p.id] = p.balance; // Guardar para la próxima
+        });
 
-        newChanges[p.id] = {
-          amount: Math.abs(diff),
-          type: diff > 0 ? 'gain' : diff < 0 ? 'loss' : 'neutral'
-        };
+        if (hasChangeSound) {
+          new Audio('https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3').play().catch(() => {});
+        }
+        setPlayerChanges(newChanges);
+        setTimeout(() => setPlayerChanges({}), 4000);
 
-        // Guardar nuevo balance de referencia
-        prevBalancesRef.current[p.id] = p.balance;
-      });
+        // 3. Obtener las acciones de la ronda pasada para girar las fichas y el sonido de disparo
+        const { data: pastActions } = await supabase.from('mafia_actions')
+          .select('*')
+          .eq('room_id', roomId)
+          .eq('round_number', prevRoundRef.current);
+        
+        if (pastActions && pastActions.length > 0) {
+          const actionsMap = Object.fromEntries(pastActions.map(a => [a.player_id, a.action_type]));
+          setRevealedActions(actionsMap);
+          setChipPhase('revealed');
 
-      if (hasChangeSound) {
-        // Sonido de resolución colectiva
-        new Audio('https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3').play().catch(() => {});
-      }
+          // Sonido según traición
+          const hasBetrayal = pastActions.some(a => a.action_type === 'betray');
+          if (hasBetrayal) {
+            console.log("¡TRAICIÓN DETECTADA! Disparando...");
+            const shot = new Audio('/gunshot.mp3');
+            shot.volume = 1.0;
+            shot.play().catch(e => console.error("Error disparo gunshot.mp3:", e));
+          } else {
+            console.log("Cooperación total. Sonido de éxito.");
+            const success = new Audio('https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3');
+            success.volume = 0.5;
+            success.play().catch(e => console.error("Error éxito:", e));
+          }
+        }
 
-      setPlayerChanges(newChanges);
-      setTimeout(() => setPlayerChanges({}), 4000);
-      prevRoundRef.current = roundNumber;
-    } else {
-      // Si no ha cambiado la ronda, solo actualizamos los balances de referencia en silencio
-      players.forEach(p => {
-        prevBalancesRef.current[p.id] = p.balance;
-      });
+        prevRoundRef.current = roundNumber;
+      };
+
+      fetchResolutionData();
+    } else if (roundNumber === 1 && prevRoundRef.current !== 1) {
+      // Reinicio de partida
+      players.forEach(p => { prevBalancesRef.current[p.id] = 0; });
+      prevRoundRef.current = 1;
     }
-  }, [globalPool, players, roundNumber]);
+  }, [globalPool, roundNumber, roomId]);
 
   // ⚠️ REGLA DE HOOKS: useMemo DEBE estar antes de cualquier early return
   const playerGroups = useMemo(() => {
@@ -215,34 +247,7 @@ export function GameBoard() {
     }
   }, [roomId, roundNumber]);
 
-  useEffect(() => {
-    // round_resolved llega con el mapa completo de acciones en el payload
-    const onResolved = (e: any) => {
-      const { actions = {}, hasBetrayal = false } = e.detail || {};
-
-      // 1s de suspense (todos ya muestran ✅, luego giran todos)
-      setTimeout(() => {
-        setChipPhase('revealed');
-        setRevealedActions(actions);
-
-        // Sonido según resultado
-        if (hasBetrayal) {
-          console.log("¡TRAICIÓN DETECTADA! Disparando...");
-          const shot = new Audio('/gunshot.mp3');
-          shot.volume = 1.0;
-          shot.play().catch(e => console.error("Error disparo gunshot.mp3:", e));
-        } else {
-          console.log("Cooperación total. Sonido de éxito.");
-          const success = new Audio('https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3');
-          success.volume = 0.5;
-          success.play().catch(e => console.error("Error éxito:", e));
-        }
-      }, 1000);
-    };
-
-    window.addEventListener('round_resolved', onResolved);
-    return () => window.removeEventListener('round_resolved', onResolved);
-  }, []);
+  // (El broadcast listener de round_resolved ha sido eliminado porque ahora la resolución se maneja de forma robusta con fetch directos al cambiar la ronda)
 
   useEffect(() => { logEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [logs]);
 
@@ -305,7 +310,6 @@ export function GameBoard() {
       target_id: target?.id || currentPlayer.id,
       action_type: type
     }]);
-    await sendActionLockIn();
   };
 
   const buyItem = async (id: string, cost: number, field: string) => {
