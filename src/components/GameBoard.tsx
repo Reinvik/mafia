@@ -466,11 +466,11 @@ export function GameBoard() {
                             transition={{ duration: 0.6, type: 'spring' }}
                           >
                             {/* Cara frontal: inicial del nombre */}
-                            <div className={`absolute inset-0 backface-hidden rounded-full border-2 sm:border-4 ${p.id === currentPlayer.id ? 'border-blue-400' : p.is_capo ? 'border-poker-gold shadow-[0_0_10px_#D4AF37]' : 'border-white/20'} bg-gray-900 flex items-center justify-center text-[10px] sm:text-xl font-black text-white`}>
+                            <div className={`absolute inset-0 backface-hidden rounded-full border-2 sm:border-4 ${p.id === currentPlayer.id ? 'border-blue-500 shadow-[0_0_15px_#3b82f6]' : p.is_capo ? 'border-poker-gold shadow-[0_0_10px_#D4AF37]' : 'border-white/20'} bg-gray-900 flex items-center justify-center text-[10px] sm:text-xl font-black text-white`}>
                               {p.name[0].toUpperCase()}
                             </div>
                             {/* Cara trasera: icono de acción */}
-                            <div className={`absolute inset-0 backface-hidden rounded-full border-2 sm:border-4 ${p.is_capo ? 'border-poker-gold' : 'border-white/20'} bg-gray-950 flex items-center justify-center [transform:rotateY(180deg)]`}>
+                            <div className={`absolute inset-0 backface-hidden rounded-full border-2 sm:border-4 ${p.id === currentPlayer.id ? 'border-blue-500 shadow-[0_0_15px_#3b82f6]' : p.is_capo ? 'border-poker-gold' : 'border-white/20'} bg-gray-950 flex items-center justify-center [transform:rotateY(180deg)]`}>
                               {getActionIcon(backIcon, isMobile ? 18 : 28)}
                             </div>
                           </motion.div>
@@ -490,8 +490,10 @@ export function GameBoard() {
                           </AnimatePresence>
                         </div>
 
-                        <div className="mt-1 bg-black/90 px-2 py-0.5 rounded-lg border border-white/10 flex flex-col items-center">
-                          <span className="text-[7px] sm:text-[9px] font-black text-white uppercase">{p.is_incognito ? '???' : p.name.split(' ')[0]}</span>
+                        <div className={`mt-1 bg-black/90 px-2 py-0.5 rounded-lg border ${p.id === currentPlayer.id ? 'border-blue-500/50' : 'border-white/10'} flex flex-col items-center`}>
+                          <span className={`text-[7px] sm:text-[9px] font-black uppercase ${p.id === currentPlayer.id ? 'text-blue-400' : 'text-white'}`}>
+                            {p.id === currentPlayer.id ? 'TÚ' : (p.is_incognito ? '???' : p.name.split(' ')[0])}
+                          </span>
                           {currentPlayer.has_accountant && <span className="text-[6px] sm:text-[8px] text-green-400 font-bold">${p.balance}</span>}
                         </div>
                       </div>
