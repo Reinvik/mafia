@@ -4,7 +4,7 @@ import { useGameStore } from '../store/gameStore';
 import { useSupabaseGame } from '../hooks/useSupabaseGame';
 import { supabase } from '../lib/supabase';
 import { roundEngine } from '../lib/roundEngine';
-import { Users, LogOut, Check, ShoppingBag, History, BarChart2, Crown, Zap, X, RotateCw } from 'lucide-react';
+import { Check, ShoppingBag, History, BarChart2, Crown, Zap, X, RotateCw, Handshake, UserX, HelpCircle, EyeOff, Search } from 'lucide-react';
 
 const Revolver = ({ size = 24, className = "" }: { size?: number, className?: string }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>

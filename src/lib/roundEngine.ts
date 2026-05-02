@@ -186,12 +186,18 @@ export const roundEngine = {
     const statDeltas: Record<string, {
       cooperate: number; betray: number; trap: number;
       earned: number; lost: number; betrayed: number; trapped: number;
+      successful_traps: number; failed_traps: number;
+      successful_betrayals: number; event_benefits: number;
       name: string;
     }> = {};
 
     players.forEach(p => {
       playerUpdates[p.id] = { balance: Number(p.balance), is_incognito: false, has_accountant: false };
-      statDeltas[p.id] = { cooperate: 0, betray: 0, trap: 0, earned: 0, lost: 0, betrayed: 0, trapped: 0, name: p.name };
+      statDeltas[p.id] = { 
+        cooperate: 0, betray: 0, trap: 0, earned: 0, lost: 0, betrayed: 0, trapped: 0, 
+        successful_traps: 0, failed_traps: 0, successful_betrayals: 0, event_benefits: 0,
+        name: p.name 
+      };
     });
 
     const logs: { room_id: string; round_number: number; message: string; type: string }[] = [];
@@ -245,6 +251,13 @@ export const roundEngine = {
             }
           });
 
+          if (groupBetrayers.length > 0) {
+            statDeltas[t.player_id].successful_traps++;
+            if (activeEventId === 'trap_refund') statDeltas[t.player_id].event_benefits++;
+          } else {
+            statDeltas[t.player_id].failed_traps++;
+          }
+
           playerUpdates[t.player_id].balance += stolenFromGroup;
           statDeltas[t.player_id].earned += stolenFromGroup;
           statDeltas[t.player_id].trapped += groupBetrayers.length;
@@ -255,6 +268,7 @@ export const roundEngine = {
       groupBetrayers.forEach(b => {
         if (groupTrappers.length === 0) {
           successfulBetrayers.push(b);
+          statDeltas[b.player_id].successful_betrayals++;
         }
       });
 
@@ -265,6 +279,7 @@ export const roundEngine = {
           playerUpdates[c.player_id].balance += cooperateReward;
           newGlobalPool += 250;
           statDeltas[c.player_id].earned += cooperateReward;
+          if (activeEventId === 'double_cooperate') statDeltas[c.player_id].event_benefits++;
         });
         if (groupCooperators.length > 1) {
           const extra = activeEventId === 'double_cooperate' ? ' (¡EVENTO ACTIVO: DOBLE!)' : '';
@@ -285,6 +300,7 @@ export const roundEngine = {
         successfulBetrayers.forEach(b => {
           playerUpdates[b.player_id].balance += sharePerBetrayer;
           statDeltas[b.player_id].earned += sharePerBetrayer;
+          statDeltas[b.player_id].event_benefits++;
         });
         logs.push({
           room_id: roomId, round_number: roundNumber,
@@ -343,6 +359,10 @@ export const roundEngine = {
             total_lost: existing.total_lost + delta.lost,
             times_betrayed: existing.times_betrayed + delta.betrayed,
             times_trapped: existing.times_trapped + delta.trapped,
+            successful_traps: (existing.successful_traps || 0) + delta.successful_traps,
+            failed_traps: (existing.failed_traps || 0) + delta.failed_traps,
+            successful_betrayals: (existing.successful_betrayals || 0) + delta.successful_betrayals,
+            event_benefits: (existing.event_benefits || 0) + delta.event_benefits,
             updated_at: new Date().toISOString(),
           }).eq('id', existing.id);
         } else {
@@ -357,6 +377,10 @@ export const roundEngine = {
             total_lost: delta.lost,
             times_betrayed: delta.betrayed,
             times_trapped: delta.trapped,
+            successful_traps: delta.successful_traps,
+            failed_traps: delta.failed_traps,
+            successful_betrayals: delta.successful_betrayals,
+            event_benefits: delta.event_benefits,
           });
         }
       }

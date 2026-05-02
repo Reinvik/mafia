@@ -8,6 +8,7 @@ import { Users, Play, Bot, Copy, Share2, UserMinus } from 'lucide-react';
 export function WaitingRoom() {
   const { players, roomId, isHost, playerId } = useGameStore();
   const [maxRounds, setMaxRounds] = React.useState(10);
+  const [bonusEnabled, setBonusEnabled] = React.useState(false);
 
   const handleKickPlayer = async (targetId: string) => {
     if (!roomId || !isHost) return;
@@ -37,7 +38,8 @@ export function WaitingRoom() {
       .from('mafia_rooms')
       .update({ 
         status: 'playing',
-        max_rounds: maxRounds 
+        max_rounds: maxRounds,
+        bonus_enabled: bonusEnabled
       })
       .eq('id', roomId);
   };
@@ -107,13 +109,26 @@ export function WaitingRoom() {
         </div>
         
         {isHost && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-8 p-6 bg-poker-gold/5 border border-poker-gold/20 rounded-3xl">
-            <div className="flex justify-between items-center mb-3">
-              <label className="text-poker-gold text-xs font-black uppercase tracking-widest">Duración de la Partida</label>
-              <span className="text-white font-black">{maxRounds} RONDAS</span>
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-8 p-6 bg-poker-gold/5 border border-poker-gold/20 rounded-3xl space-y-6">
+            <div>
+              <div className="flex justify-between items-center mb-3">
+                <label className="text-poker-gold text-[10px] font-black uppercase tracking-widest">Duración de la Partida</label>
+                <span className="text-white font-black">{maxRounds} RONDAS</span>
+              </div>
+              <input type="range" min="5" max="30" step="5" value={maxRounds} onChange={(e) => setMaxRounds(parseInt(e.target.value))} className="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-poker-gold" />
             </div>
-            <input type="range" min="5" max="30" step="5" value={maxRounds} onChange={(e) => setMaxRounds(parseInt(e.target.value))} className="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-poker-gold" />
-            <p className="text-[10px] text-gray-500 mt-3 italic text-center">"Una guerra corta es una guerra barata."</p>
+
+            <label className="flex items-center gap-4 cursor-pointer group">
+              <div className="relative">
+                <input type="checkbox" checked={bonusEnabled} onChange={(e) => setBonusEnabled(e.target.checked)} className="sr-only" />
+                <div className={`w-12 h-6 rounded-full transition-colors ${bonusEnabled ? 'bg-poker-gold' : 'bg-gray-800'}`}></div>
+                <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${bonusEnabled ? 'translate-x-6' : ''}`}></div>
+              </div>
+              <div className="flex-1">
+                <p className="text-white font-bold text-sm group-hover:text-poker-gold transition-colors">Bonificaciones final de partida</p>
+                <p className="text-[9px] text-gray-500 uppercase tracking-tighter">Premios especiales por desempeño (+1000 c/u)</p>
+              </div>
+            </label>
           </motion.div>
         )}
 
