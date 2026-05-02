@@ -87,15 +87,7 @@ export function GameBoard() {
         amount: Math.abs(poolDiff),
         type: poolDiff > 0 ? 'gain' : 'loss'
       });
-      
-      // Sonido para el pozo
-      if (poolDiff > 0) {
-        new Audio('https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3').play().catch(() => {});
-      } else {
-        new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3').play().catch(() => {});
-      }
-
-      setTimeout(() => setPoolChange(null), 3000);
+      // Quitamos el sonido de pozo individual para que no pise los sonidos principales de resolución
       prevPoolRef.current = globalPool;
     }
 
@@ -124,10 +116,7 @@ export function GameBoard() {
           prevBalancesRef.current[p.id] = p.balance; // Guardar para la próxima
         });
 
-        if (hasChangeSound) {
-          new Audio('https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3').play().catch(() => {});
-        }
-        setPlayerChanges(newChanges);
+
         setTimeout(() => setPlayerChanges({}), 4000);
 
         // 3. Obtener las acciones de la ronda pasada para girar las fichas y el sonido de disparo
@@ -153,9 +142,22 @@ export function GameBoard() {
             const success = new Audio('https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3');
             success.volume = 0.5;
             success.play().catch(e => console.error("Error éxito:", e));
+            
+            // Si hubo cooperación y cambios de dinero, tocamos el sonido de dinero
+            if (hasChangeSound) {
+              setTimeout(() => {
+                new Audio('https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3').play().catch(() => {});
+              }, 400); // Pequeño delay
+            }
           }
+        } else {
+           if (hasChangeSound) {
+             new Audio('https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3').play().catch(() => {});
+           }
         }
 
+        setPlayerChanges(newChanges);
+        
         prevRoundRef.current = roundNumber;
       };
 
