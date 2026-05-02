@@ -95,7 +95,7 @@ export function WaitingRoom() {
                 {isHost && player.id !== playerId && (
                   <button 
                     onClick={() => handleKickPlayer(player.id)}
-                    className="opacity-0 group-hover:opacity-100 p-2 text-gray-600 hover:text-red-500 transition-all"
+                    className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 p-2 text-gray-500 hover:text-red-500 transition-all"
                     title="Expulsar de la sala"
                   >
                     <UserMinus size={18} />

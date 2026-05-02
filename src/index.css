@@ -9,7 +9,7 @@
 
 @layer base {
   body {
-    @apply bg-mafia-deep text-white font-sans overflow-hidden select-none;
+    @apply bg-mafia-deep text-white font-sans select-none;
     background-image: var(--background-image-grain);
   }
 }
