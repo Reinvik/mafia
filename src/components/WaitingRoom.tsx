@@ -3,11 +3,26 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../store/gameStore';
 import { supabase } from '../lib/supabase';
 import { botEngine } from '../lib/botEngine';
-import { Users, Play, Bot, Copy, Share2 } from 'lucide-react';
+import { Users, Play, Bot, Copy, Share2, UserMinus } from 'lucide-react';
 
 export function WaitingRoom() {
-  const { players, roomId, isHost } = useGameStore();
+  const { players, roomId, isHost, playerId } = useGameStore();
   const [maxRounds, setMaxRounds] = React.useState(10);
+
+  const handleKickPlayer = async (targetId: string) => {
+    if (!roomId || !isHost) return;
+    if (targetId === playerId) return; // No te puedes expulsar a ti mismo
+    
+    const { error } = await supabase
+      .from('mafia_players')
+      .delete()
+      .eq('id', targetId);
+      
+    if (error) {
+      console.error("Error al expulsar:", error);
+      alert("No se pudo expulsar al jugador.");
+    }
+  };
 
   const handleAddBot = async () => {
     if (!roomId) return;
@@ -73,9 +88,19 @@ export function WaitingRoom() {
                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-poker-gold to-yellow-700 flex items-center justify-center text-black font-black text-xl shadow-lg">{player.name[0].toUpperCase()}</div>
                 <div className="flex-1">
                   <p className="font-bold text-white group-hover:text-poker-gold transition-colors truncate">{player.name}</p>
-                  <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest">{player.id === useGameStore.getState().playerId ? 'TÚ (Capo)' : 'Jugador'}</p>
+                  <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest">{player.id === playerId ? 'TÚ (Capo)' : 'Jugador'}</p>
                 </div>
                 {player.name.includes('(Bot)') && <Bot className="w-4 h-4 text-gray-600" />}
+                
+                {isHost && player.id !== playerId && (
+                  <button 
+                    onClick={() => handleKickPlayer(player.id)}
+                    className="opacity-0 group-hover:opacity-100 p-2 text-gray-600 hover:text-red-500 transition-all"
+                    title="Expulsar de la sala"
+                  >
+                    <UserMinus size={18} />
+                  </button>
+                )}
               </motion.div>
             ))}
           </AnimatePresence>

@@ -98,6 +98,15 @@ export function useSupabaseGame() {
           supabase.from('mafia_players').select('*').eq('room_id', roomId).order('created_at', { ascending: true }).then(({data}) => {
             if (data) {
               setPlayers(data as any[]);
+              
+              // Verificar si yo (jugador actual) sigo en la sala
+              const stillInRoom = data.some(p => p.id === playerId);
+              if (!stillInRoom) {
+                console.log("Has sido expulsado de la sala.");
+                resetGame();
+                return;
+              }
+
               if (data[0]?.id === playerId) setIsHost(true);
             }
           });
