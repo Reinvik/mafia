@@ -332,10 +332,10 @@ export function GameBoard() {
   };
 
   return (
-    <div className="w-full h-screen bg-mafia-deep flex flex-col lg:flex-row overflow-hidden relative selection:bg-poker-gold selection:text-black">
+    <div className="w-full h-screen bg-mafia-deep flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden relative selection:bg-poker-gold selection:text-black">
 
 
-      <div className="flex-1 flex flex-col p-4 sm:p-6 relative overflow-hidden">
+      <div className="flex-1 flex flex-col p-4 sm:p-6 relative">
         {/* HUD Superior */}
         <div className="flex justify-between items-center z-30 h-16 sm:h-20">
           <div className="bg-black/90 p-3 sm:p-4 rounded-2xl border border-poker-gold/30 flex gap-4 sm:gap-6 backdrop-blur-xl shadow-2xl relative">

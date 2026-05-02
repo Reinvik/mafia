@@ -11,7 +11,7 @@ function App() {
   useSupabaseGame();
 
   return (
-    <div className="w-full h-screen overflow-hidden selection:bg-poker-gold selection:text-black bg-mafia-deep">
+    <div className="w-full min-h-screen overflow-y-auto selection:bg-poker-gold selection:text-black bg-mafia-deep">
       <AnimatePresence mode="wait">
         {status === 'lobby' && (
           <motion.div key="lobby" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full">
