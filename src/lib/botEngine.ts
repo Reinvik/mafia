@@ -14,7 +14,7 @@ export const botEngine = {
       .insert([{
         room_id: roomId,
         name: randomName,
-        balance: 1000, // Iniciar con algo de dinero
+        balance: 0, // Igual que los humanos
         is_capo: false
       }])
       .select()
