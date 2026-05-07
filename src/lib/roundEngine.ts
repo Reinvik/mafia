@@ -233,54 +233,78 @@ export const roundEngine = {
         if (action.action_type === 'cooperate') {
           statDeltas[p.id].cooperate++;
           let betrayalCount = 0;
-          if (leftAction?.action_type === 'betray') betrayalCount++;
-          if (rightAction?.action_type === 'betray') betrayalCount++;
+          let betrayedBy: string[] = [];
+          if (leftAction?.action_type === 'betray') { betrayalCount++; betrayedBy.push(shuffledPlayers[leftIdx].name); }
+          if (rightAction?.action_type === 'betray') { betrayalCount++; betrayedBy.push(shuffledPlayers[rightIdx].name); }
           
           if (betrayalCount === 0) {
             const reward = activeEventId === 'double_cooperate' ? 2000 : 1000;
             playerUpdates[p.id].balance += reward;
             statDeltas[p.id].earned += reward;
             newGlobalPool += 250;
+            logs.push({ room_id: roomId, round_number: roundNumber, message: `🤝 ${p.name} cooperó con éxito y ganó $${reward}`, type: 'success' });
           } else {
             const loss = 1000 * betrayalCount;
             playerUpdates[p.id].balance = Math.max(0, playerUpdates[p.id].balance - loss);
             statDeltas[p.id].lost += loss;
             statDeltas[p.id].betrayed += betrayalCount;
+            logs.push({ room_id: roomId, round_number: roundNumber, message: `🗡️ ${p.name} fue traicionado por ${betrayedBy.join(' y ')}. Perdió $${loss}`, type: 'danger' });
           }
         } else if (action.action_type === 'betray') {
           statDeltas[p.id].betray++;
           let loot = 0;
-          [leftAction, rightAction].forEach(na => {
-            if (!na) return;
-            if (na.action_type === 'cooperate') {
-              loot += 1000;
-              statDeltas[p.id].successful_betrayals++;
-            } else if (na.action_type === 'betray') {
-              playerUpdates[p.id].balance = Math.max(0, playerUpdates[p.id].balance - 500);
-              statDeltas[p.id].lost += 500;
-            } else if (na.action_type === 'trap') {
-              playerUpdates[p.id].balance = Math.max(0, playerUpdates[p.id].balance - 1000);
-              statDeltas[p.id].lost += 1000;
-              statDeltas[p.id].trapped++;
-            }
-          });
+          let victims: string[] = [];
+          let traps: string[] = [];
+          let shootouts: string[] = [];
+
+          // Procesar vecino Izquierdo
+          if (leftAction?.action_type === 'cooperate') {
+            loot += 1000; victims.push(shuffledPlayers[leftIdx].name);
+            statDeltas[p.id].successful_betrayals++;
+          } else if (leftAction?.action_type === 'betray') {
+            playerUpdates[p.id].balance = Math.max(0, playerUpdates[p.id].balance - 500);
+            statDeltas[p.id].lost += 500; shootouts.push(shuffledPlayers[leftIdx].name);
+          } else if (leftAction?.action_type === 'trap') {
+            playerUpdates[p.id].balance = Math.max(0, playerUpdates[p.id].balance - 1000);
+            statDeltas[p.id].lost += 1000; statDeltas[p.id].trapped++; traps.push(shuffledPlayers[leftIdx].name);
+          }
+
+          // Procesar vecino Derecho
+          if (rightAction?.action_type === 'cooperate') {
+            loot += 1000; victims.push(shuffledPlayers[rightIdx].name);
+            statDeltas[p.id].successful_betrayals++;
+          } else if (rightAction?.action_type === 'betray') {
+            playerUpdates[p.id].balance = Math.max(0, playerUpdates[p.id].balance - 500);
+            statDeltas[p.id].lost += 500; shootouts.push(shuffledPlayers[rightIdx].name);
+          } else if (rightAction?.action_type === 'trap') {
+            playerUpdates[p.id].balance = Math.max(0, playerUpdates[p.id].balance - 1000);
+            statDeltas[p.id].lost += 1000; statDeltas[p.id].trapped++; traps.push(shuffledPlayers[rightIdx].name);
+          }
+
           playerUpdates[p.id].balance += loot;
           statDeltas[p.id].earned += loot;
+
+          if (loot > 0) logs.push({ room_id: roomId, round_number: roundNumber, message: `🗡️ ${p.name} robó $${loot} a ${victims.join(' y ')}`, type: 'danger' });
+          if (shootouts.length > 0) logs.push({ room_id: roomId, round_number: roundNumber, message: `🔥 ${p.name} tuvo un tiroteo con ${shootouts.join(' y ')}`, type: 'danger' });
+          if (traps.length > 0) logs.push({ room_id: roomId, round_number: roundNumber, message: `🪤 ${p.name} cayó en la trampa de ${traps.join(' y ')}`, type: 'warning' });
         } else if (action.action_type === 'trap') {
           statDeltas[p.id].trap++;
           let caughtCount = 0;
-          if (leftAction?.action_type === 'betray') caughtCount++;
-          if (rightAction?.action_type === 'betray') caughtCount++;
+          let caughtNames: string[] = [];
+          if (leftAction?.action_type === 'betray') { caughtCount++; caughtNames.push(shuffledPlayers[leftIdx].name); }
+          if (rightAction?.action_type === 'betray') { caughtCount++; caughtNames.push(shuffledPlayers[rightIdx].name); }
+          
           if (caughtCount > 0) {
             const reward = caughtCount * 1000;
             playerUpdates[p.id].balance += reward;
             statDeltas[p.id].earned += reward;
             statDeltas[p.id].successful_traps += caughtCount;
-            logs.push({ room_id: roomId, round_number: roundNumber, message: `🛡️ ${p.name} atrapó a un traidor en el círculo`, type: 'success' });
+            logs.push({ room_id: roomId, round_number: roundNumber, message: `🛡️ ${p.name} atrapó a ${caughtNames.join(' y ')} y ganó $${reward}`, type: 'success' });
           } else {
             playerUpdates[p.id].balance = Math.max(0, playerUpdates[p.id].balance - 500);
             statDeltas[p.id].lost += 500;
             statDeltas[p.id].failed_traps++;
+            logs.push({ room_id: roomId, round_number: roundNumber, message: `🪤 La trampa de ${p.name} falló`, type: 'info' });
           }
         }
       });

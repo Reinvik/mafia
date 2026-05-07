@@ -438,6 +438,27 @@ export function GameBoard() {
         <div className="flex-1 relative flex flex-wrap items-center justify-center gap-4 sm:gap-20 min-h-0 py-2 px-2 overflow-y-auto scrollbar-hide">
           {playerGroups.map((group, groupIdx) => (
             <div key={`group-${groupIdx}`} className={`relative ${gameMode === 'circle' ? 'w-72 h-72 sm:w-[40rem] sm:h-[40rem]' : 'w-48 h-48 sm:w-80 sm:h-80'} rounded-[3rem] border-2 border-poker-gold/10 bg-black/20 backdrop-blur-sm flex items-center justify-center`}>
+                {gameMode === 'circle' && (
+                  <svg className="absolute inset-0 pointer-events-none" style={{ overflow: 'visible' }}>
+                    <g transform={`translate(${isMobile ? 144 : 320}, ${isMobile ? 144 : 320})`}>
+                      {group.map((_, idx) => {
+                        const r = isMobile ? 110 : 250;
+                        const a1 = (idx / group.length) * (2 * Math.PI) - (Math.PI / 2);
+                        const a2 = ((idx + 1) % group.length) * (2 * Math.PI) - (Math.PI / 2);
+                        return (
+                          <line 
+                            key={`line-${idx}`}
+                            x1={Math.cos(a1) * r} y1={Math.sin(a1) * r}
+                            x2={Math.cos(a2) * r} y2={Math.sin(a2) * r}
+                            stroke="rgba(212,175,55,0.2)"
+                            strokeWidth="1"
+                            strokeDasharray="4 4"
+                          />
+                        );
+                      })}
+                    </g>
+                  </svg>
+                )}
                 {group.map((p, i) => {
                   const pAngle = (i / group.length) * (2 * Math.PI) - (Math.PI / 2);
                   const pRadius = gameMode === 'circle' 
@@ -517,6 +538,11 @@ export function GameBoard() {
                         </div>
 
                         <div className={`mt-1 max-w-[80px] sm:max-w-[120px] bg-black/90 px-2 py-0.5 rounded-lg border ${p.id === currentPlayer.id ? 'border-blue-500/50' : 'border-white/10'} flex flex-col items-center`}>
+                          {gameMode === 'circle' && (
+                            <span className="text-[6px] sm:text-[7px] text-poker-gold/40 font-mono mb-0.5">
+                              POS {i + 1}
+                            </span>
+                          )}
                           <span className={`text-[7px] sm:text-[9px] font-black uppercase truncate w-full text-center ${p.id === currentPlayer.id ? 'text-blue-400' : 'text-white'}`}>
                             {p.id === currentPlayer.id ? p.name : (p.is_incognito ? '???' : p.name)}
                           </span>
