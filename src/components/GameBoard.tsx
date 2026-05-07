@@ -435,8 +435,8 @@ export function GameBoard() {
           </div>
         </div>
 
-        {/* MESA DE JUEGO */}
         <div className="flex-1 relative flex flex-wrap items-center justify-center gap-4 sm:gap-20 min-h-0 py-2 px-2 overflow-y-auto scrollbar-hide">
+          {playerGroups.map((group, groupIdx) => (
             <div key={`group-${groupIdx}`} className={`relative ${gameMode === 'circle' ? 'w-72 h-72 sm:w-[40rem] sm:h-[40rem]' : 'w-48 h-48 sm:w-80 sm:h-80'} rounded-[3rem] border-2 border-poker-gold/10 bg-black/20 backdrop-blur-sm flex items-center justify-center`}>
                 {group.map((p, i) => {
                   const pAngle = (i / group.length) * (2 * Math.PI) - (Math.PI / 2);

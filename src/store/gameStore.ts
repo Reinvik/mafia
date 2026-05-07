@@ -25,6 +25,7 @@ export interface GameState {
   currentPlayer: Player | null;
   timeRemaining: number;
   gameMode: GameMode;
+  isHost: boolean;
   
   setRoomInfo: (info: { id: string, status: GameStatus, globalPool: number, roundNumber: number, max_rounds?: number, game_mode?: GameMode }) => void;
   setPlayers: (players: Player[]) => void;

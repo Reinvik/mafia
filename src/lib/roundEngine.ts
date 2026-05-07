@@ -202,6 +202,7 @@ export const roundEngine = {
       successful_traps: number; failed_traps: number;
       successful_betrayals: number; event_benefits: number;
       name: string;
+      last_action?: string;
     }> = {};
 
     players.forEach(p => {
@@ -285,91 +286,92 @@ export const roundEngine = {
       });
     } else {
       // 5. RESOLUCIÓN CLÁSICA POR GRUPOS
-      const groupPlayerIds = group.map(p => p.id);
-      const groupActions = filteredActions.filter(a => groupPlayerIds.includes(a.player_id));
-      const groupBetrayers = groupActions.filter(a => a.action_type === 'betray');
-      const groupTrappers = groupActions.filter(a => a.action_type === 'trap');
-      const groupCooperators = groupActions.filter(a => a.action_type === 'cooperate');
+      groups.forEach((group, groupIdx) => {
+        const groupPlayerIds = group.map(p => p.id);
+        const groupActions = filteredActions.filter(a => groupPlayerIds.includes(a.player_id));
+        const groupBetrayers = groupActions.filter(a => a.action_type === 'betray');
+        const groupTrappers = groupActions.filter(a => a.action_type === 'trap');
+        const groupCooperators = groupActions.filter(a => a.action_type === 'cooperate');
 
-      // Contabilizar acciones para stats
-      groupActions.forEach(a => {
-        if (statDeltas[a.player_id]) {
-          if (a.action_type === 'cooperate') statDeltas[a.player_id].cooperate++;
-          if (a.action_type === 'betray') statDeltas[a.player_id].betray++;
-          if (a.action_type === 'trap') statDeltas[a.player_id].trap++;
-          playerUpdates[a.player_id].last_action = a.action_type;
-        }
-      });
-
-      // Fase local: Trampas
-      const trapStealAmount = activeEventId === 'trap_refund' ? 2000 : 1000;
-
-      if (groupTrappers.length > 0) {
-        groupTrappers.forEach(t => {
-          const trapper = group.find(p => p.id === t.player_id);
-          let stolenFromGroup = 0;
-
-          groupBetrayers.forEach(b => {
-            const betrayer = group.find(p => p.id === b.player_id);
-            if (betrayer && trapper) {
-              const stealAmount = Math.floor(trapStealAmount / groupTrappers.length);
-              playerUpdates[b.player_id].balance = Math.max(0, playerUpdates[b.player_id].balance - stealAmount);
-              stolenFromGroup += stealAmount;
-              statDeltas[b.player_id].lost += stealAmount;
-              statDeltas[b.player_id].betrayed++;
-
-              const poolSteal = Math.floor(Math.min(newGlobalPool, 1000) / groupTrappers.length);
-              newGlobalPool -= poolSteal;
-              stolenFromGroup += poolSteal;
-
-              logs.push({
-                room_id: roomId, round_number: roundNumber,
-                message: `[Célula ${groupIdx + 1}] ¡EMBOSCADA! ${trapper.name} atrapó a ${betrayer.name}. +$${stolenFromGroup.toLocaleString()}`,
-                type: 'warning',
-              });
-            }
-          });
-
-          if (groupBetrayers.length > 0) {
-            statDeltas[t.player_id].successful_traps++;
-            if (activeEventId === 'trap_refund') statDeltas[t.player_id].event_benefits++;
-          } else {
-            statDeltas[t.player_id].failed_traps++;
+        // Contabilizar acciones para stats
+        groupActions.forEach(a => {
+          if (statDeltas[a.player_id]) {
+            if (a.action_type === 'cooperate') statDeltas[a.player_id].cooperate++;
+            if (a.action_type === 'betray') statDeltas[a.player_id].betray++;
+            if (a.action_type === 'trap') statDeltas[a.player_id].trap++;
+            playerUpdates[a.player_id].last_action = a.action_type;
           }
-
-          playerUpdates[t.player_id].balance += stolenFromGroup;
-          statDeltas[t.player_id].earned += stolenFromGroup;
-          statDeltas[t.player_id].trapped += groupBetrayers.length;
         });
-      }
 
-      // Traidores que superan el grupo → van al pozo
-      groupBetrayers.forEach(b => {
-        if (groupTrappers.length === 0) {
-          successfulBetrayers.push(b);
-          statDeltas[b.player_id].successful_betrayals++;
-        }
-      });
+        // Fase local: Trampas
+        const trapStealAmount = activeEventId === 'trap_refund' ? 2000 : 1000;
 
-      // Recompensar cooperación (con evento double_cooperate)
-      const cooperateReward = activeEventId === 'double_cooperate' ? 2000 : 1000;
-      if (groupBetrayers.length === 0) {
-        groupCooperators.forEach(c => {
-          playerUpdates[c.player_id].balance += cooperateReward;
-          newGlobalPool += 250;
-          statDeltas[c.player_id].earned += cooperateReward;
-          if (activeEventId === 'double_cooperate') statDeltas[c.player_id].event_benefits++;
-        });
-        if (groupCooperators.length > 1) {
-          const extra = activeEventId === 'double_cooperate' ? ' (¡EVENTO ACTIVO: DOBLE!)' : '';
-          logs.push({
-            room_id: roomId, round_number: roundNumber,
-            message: `[Célula ${groupIdx + 1}] Cooperación total. +$${cooperateReward.toLocaleString()} para todos.${extra}`,
-            type: 'success',
+        if (groupTrappers.length > 0) {
+          groupTrappers.forEach(t => {
+            const trapper = group.find(p => p.id === t.player_id);
+            let stolenFromGroup = 0;
+
+            groupBetrayers.forEach(b => {
+              const betrayer = group.find(p => p.id === b.player_id);
+              if (betrayer && trapper) {
+                const stealAmount = Math.floor(trapStealAmount / groupTrappers.length);
+                playerUpdates[b.player_id].balance = Math.max(0, playerUpdates[b.player_id].balance - stealAmount);
+                stolenFromGroup += stealAmount;
+                statDeltas[b.player_id].lost += stealAmount;
+                statDeltas[b.player_id].betrayed++;
+
+                const poolSteal = Math.floor(Math.min(newGlobalPool, 1000) / groupTrappers.length);
+                newGlobalPool -= poolSteal;
+                stolenFromGroup += poolSteal;
+
+                logs.push({
+                  room_id: roomId, round_number: roundNumber,
+                  message: `[Célula ${groupIdx + 1}] ¡EMBOSCADA! ${trapper.name} atrapó a ${betrayer.name}. +$${stolenFromGroup.toLocaleString()}`,
+                  type: 'warning',
+                });
+              }
+            });
+
+            if (groupBetrayers.length > 0) {
+              statDeltas[t.player_id].successful_traps++;
+              if (activeEventId === 'trap_refund') statDeltas[t.player_id].event_benefits++;
+            } else {
+              statDeltas[t.player_id].failed_traps++;
+            }
+
+            playerUpdates[t.player_id].balance += stolenFromGroup;
+            statDeltas[t.player_id].earned += stolenFromGroup;
+            statDeltas[t.player_id].trapped += groupBetrayers.length;
           });
         }
-      }
-    });
+
+        // Traidores que superan el grupo → van al pozo
+        groupBetrayers.forEach(b => {
+          if (groupTrappers.length === 0) {
+            successfulBetrayers.push(b);
+            statDeltas[b.player_id].successful_betrayals++;
+          }
+        });
+
+        // Recompensar cooperación (con evento double_cooperate)
+        const cooperateReward = activeEventId === 'double_cooperate' ? 2000 : 1000;
+        if (groupBetrayers.length === 0) {
+          groupCooperators.forEach(c => {
+            playerUpdates[c.player_id].balance += cooperateReward;
+            newGlobalPool += 250;
+            statDeltas[c.player_id].earned += cooperateReward;
+            if (activeEventId === 'double_cooperate') statDeltas[c.player_id].event_benefits++;
+          });
+          if (groupCooperators.length > 1) {
+            const extra = activeEventId === 'double_cooperate' ? ' (¡EVENTO ACTIVO: DOBLE!)' : '';
+            logs.push({
+              room_id: roomId, round_number: roundNumber,
+              message: `[Célula ${groupIdx + 1}] Cooperación total. +$${cooperateReward.toLocaleString()} para todos.${extra}`,
+              type: 'success',
+            });
+          }
+        }
+      });
 
       // 6. RESOLUCIÓN GLOBAL (traiciones exitosas)
       if (successfulBetrayers.length >= 2) {
