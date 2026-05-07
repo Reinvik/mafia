@@ -388,7 +388,8 @@ export function GameBoard() {
               <button 
                 onClick={async () => { 
                   new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3').play().catch(() => {});
-                  await supabase.from('mafia_rooms').update({ status: 'finished' }).eq('id', roomId);
+                  useGameStore.setState({ status: 'finished' });
+                  supabase.from('mafia_rooms').update({ status: 'finished' }).eq('id', roomId).then(() => {});
                 }} 
                 title="Terminar Partida"
                 className="bg-black/80 text-red-500 p-3 rounded-xl border border-red-500/40 shadow-xl hover:bg-red-500/20 transition-colors"
@@ -435,31 +436,7 @@ export function GameBoard() {
         <div className="flex-1 relative flex flex-wrap items-center justify-center gap-4 sm:gap-20 min-h-0 py-2 px-2 overflow-y-auto scrollbar-hide">
           {playerGroups.map((group, groupIdx) => (
             <div key={`group-${groupIdx}`} className={`relative ${gameMode === 'circle' ? 'w-72 h-72 sm:w-[40rem] sm:h-[40rem]' : 'w-48 h-48 sm:w-80 sm:h-80'} rounded-[3rem] border-2 border-poker-gold/10 bg-black/20 backdrop-blur-sm flex items-center justify-center`}>
-                {gameMode === 'circle' && (
-                  <svg className="absolute inset-0 pointer-events-none" style={{ overflow: 'visible' }}>
-                    <g transform={`translate(${isMobile ? 144 : 320}, ${isMobile ? 144 : 320})`}>
-                      {group.map((_, idx) => {
-                        const r = isMobile ? 110 : 250;
-                        const a1 = (idx / group.length) * (2 * Math.PI) - (Math.PI / 2);
-                        const a2 = ((idx + 1) % group.length) * (2 * Math.PI) - (Math.PI / 2);
-                        
-                        // Resaltar las líneas que tocan al jugador actual
-                        const myIdx = group.findIndex(m => m.id === currentPlayer?.id);
-                        const isMyConnection = myIdx !== -1 && (idx === myIdx || idx === (myIdx - 1 + group.length) % group.length);
-                        
-                        return (
-                          <line 
-                            key={`line-${idx}`}
-                            x1={Math.cos(a1) * r} y1={Math.sin(a1) * r}
-                            x2={Math.cos(a2) * r} y2={Math.sin(a2) * r}
-                            stroke={isMyConnection ? "rgba(59,130,246,0.8)" : "rgba(212,175,55,0.4)"}
-                            strokeWidth={isMyConnection ? "4" : "2"}
-                          />
-                        );
-                      })}
-                    </g>
-                  </svg>
-                )}
+                {/* SVG removed to hide blue lines */}
                 {group.map((p, i) => {
                   const pAngle = (i / group.length) * (2 * Math.PI) - (Math.PI / 2);
                   const pRadius = gameMode === 'circle' 
