@@ -445,14 +445,19 @@ export function GameBoard() {
                         const r = isMobile ? 110 : 250;
                         const a1 = (idx / group.length) * (2 * Math.PI) - (Math.PI / 2);
                         const a2 = ((idx + 1) % group.length) * (2 * Math.PI) - (Math.PI / 2);
+                        
+                        // Resaltar las líneas que tocan al jugador actual
+                        const myIdx = group.findIndex(m => m.id === currentPlayer?.id);
+                        const isMyConnection = myIdx !== -1 && (idx === myIdx || idx === (myIdx - 1 + group.length) % group.length);
+                        
                         return (
                           <line 
                             key={`line-${idx}`}
                             x1={Math.cos(a1) * r} y1={Math.sin(a1) * r}
                             x2={Math.cos(a2) * r} y2={Math.sin(a2) * r}
-                            stroke="rgba(212,175,55,0.2)"
-                            strokeWidth="1"
-                            strokeDasharray="4 4"
+                            stroke={isMyConnection ? "rgba(59,130,246,0.8)" : "rgba(212,175,55,0.2)"}
+                            strokeWidth={isMyConnection ? "3" : "1"}
+                            strokeDasharray={isMyConnection ? "none" : "4 4"}
                           />
                         );
                       })}
@@ -466,6 +471,21 @@ export function GameBoard() {
                     : (isMobile ? 65 : 125); 
                   const px = Math.cos(pAngle) * pRadius;
                   const py = Math.sin(pAngle) * pRadius;
+
+                  // Identificar si este jugador es mi oponente directo
+                  const isMe = p.id === currentPlayer?.id;
+                  let isMyTarget = false;
+                  if (gameMode === 'circle' && currentPlayer) {
+                    const myIdx = group.findIndex(m => m.id === currentPlayer.id);
+                    if (myIdx !== -1) {
+                      const lIdx = (myIdx - 1 + group.length) % group.length;
+                      const rIdx = (myIdx + 1) % group.length;
+                      isMyTarget = (i === lIdx || i === rIdx);
+                    }
+                  } else if (gameMode === 'classic') {
+                    const amIInThisGroup = group.some(m => m.id === currentPlayer?.id);
+                    isMyTarget = amIInThisGroup && !isMe;
+                  }
                   // === LÓGICA LIMPIA DE CHIP ===
                   // Determinar qué muestra la cara trasera:
                   // - En 'revealed': acción de esta ronda (revealedActions)
@@ -490,16 +510,22 @@ export function GameBoard() {
                   return (
                     // Posición centrada: left/top al 50% del contenedor + offset circular
                     // CSS transition para suavizar el intercambio entre rondas
-                    <div
+                     <div
                       key={p.id}
-                      className="absolute z-30"
+                      className={`absolute z-30 transition-all duration-500 ${isMe ? 'scale-110' : ''}`}
                       style={{
                         left: '50%',
                         top: '50%',
                         transform: `translate(calc(-50% + ${px}px), calc(-50% + ${py}px))`,
-                        transition: 'transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                        filter: isMyTarget ? 'drop-shadow(0 0 12px rgba(59,130,246,0.6))' : (isMe ? 'drop-shadow(0 0 15px rgba(212,175,55,0.4))' : 'none'),
+                        transition: 'transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s ease',
                       }}
                     >
+                      {isMyTarget && (
+                        <div className="absolute -top-12 left-1/2 -translate-x-1/2 whitespace-nowrap bg-blue-600/80 text-white text-[7px] font-bold px-2 py-0.5 rounded-full border border-blue-400/50 shadow-lg shadow-blue-900/50 z-50 animate-bounce">
+                          OPONENTE
+                        </div>
+                      )}
                       <div className="flex flex-col items-center relative">
                         {/* ANIMACIÓN DE DINERO EN LA FICHA */}
                         <AnimatePresence>
