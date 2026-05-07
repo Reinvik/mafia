@@ -171,15 +171,27 @@ export function GameBoard() {
 
   // ⚠️ REGLA DE HOOKS: useMemo DEBE estar antes de cualquier early return
   const playerGroups = useMemo(() => {
-    const shuffled = [...players].sort((a, b) => {
-      const strA = a.id + layoutRound.toString();
-      const strB = b.id + layoutRound.toString();
-      let hashA = 0;
-      let hashB = 0;
-      for (let i = 0; i < strA.length; i++) hashA = ((hashA << 5) - hashA) + strA.charCodeAt(i);
-      for (let i = 0; i < strB.length; i++) hashB = ((hashB << 5) - hashB) + strB.charCodeAt(i);
-      return hashA - hashB;
-    });
+    // 3. Estructura de grupos (Misma lógica de Fisher-Yates que roundEngine)
+    const seedString = roomId + layoutRound.toString();
+    const shuffled = [...players];
+    
+    let h = 0;
+    for (let i = 0; i < seedString.length; i++) {
+      h = Math.imul(31, h) + seedString.charCodeAt(i) | 0;
+    }
+    
+    const seededRandom = () => {
+      h = Math.imul(h ^ h >>> 16, 0x85ebca6b) | 0;
+      h = Math.imul(h ^ h >>> 13, 0xc2b2ae35) | 0;
+      h = (h ^ h >>> 16) >>> 0;
+      return h / 0xffffffff;
+    };
+
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(seededRandom() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
     const groups: any[][] = [];
     const n = shuffled.length;
     if (n <= 3) {
@@ -192,7 +204,7 @@ export function GameBoard() {
       });
     }
     return groups;
-  }, [players, layoutRound]);
+  }, [players, layoutRound, roomId]);
 
   if (!currentPlayer) return null;
 
@@ -515,9 +527,9 @@ export function GameBoard() {
 
         {/* ACCIONES */}
         <div className="mt-auto flex justify-center gap-2 sm:gap-4 p-2 sm:p-4 z-30">
-          <ActionCard label="Cooperar" icon={<Handshake />} selected={selectedAction === 'cooperate'} disabled={!!selectedAction || isResolving} onClick={() => handleAction('cooperate')} color="from-blue-600 to-blue-950" isMobile={isMobile} />
-          <ActionCard label="Traicionar" icon={<Revolver />} selected={selectedAction === 'betray'} disabled={!!selectedAction || isResolving} onClick={() => handleAction('betray')} color="from-red-700 to-red-950" isMobile={isMobile} />
-          <ActionCard label="Trampa" icon={<UserX />} selected={selectedAction === 'trap'} disabled={!!selectedAction || isResolving} onClick={() => handleAction('trap')} color="from-purple-700 to-purple-950" isMobile={isMobile} />
+          <ActionCard label="Cooperar" icon={<Handshake />} selected={selectedAction === 'cooperate'} disabled={!!selectedAction || isResolving || chipPhase !== 'playing'} onClick={() => handleAction('cooperate')} color="from-blue-600 to-blue-950" isMobile={isMobile} />
+          <ActionCard label="Traicionar" icon={<Revolver />} selected={selectedAction === 'betray'} disabled={!!selectedAction || isResolving || chipPhase !== 'playing'} onClick={() => handleAction('betray')} color="from-red-700 to-red-950" isMobile={isMobile} />
+          <ActionCard label="Trampa" icon={<UserX />} selected={selectedAction === 'trap'} disabled={!!selectedAction || isResolving || chipPhase !== 'playing'} onClick={() => handleAction('trap')} color="from-purple-700 to-purple-950" isMobile={isMobile} />
         </div>
 
         <AnimatePresence>
