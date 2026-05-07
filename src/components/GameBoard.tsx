@@ -455,9 +455,8 @@ export function GameBoard() {
                             key={`line-${idx}`}
                             x1={Math.cos(a1) * r} y1={Math.sin(a1) * r}
                             x2={Math.cos(a2) * r} y2={Math.sin(a2) * r}
-                            stroke={isMyConnection ? "rgba(59,130,246,0.8)" : "rgba(212,175,55,0.2)"}
-                            strokeWidth={isMyConnection ? "3" : "1"}
-                            strokeDasharray={isMyConnection ? "none" : "4 4"}
+                            stroke={isMyConnection ? "rgba(59,130,246,0.8)" : "rgba(212,175,55,0.4)"}
+                            strokeWidth={isMyConnection ? "4" : "2"}
                           />
                         );
                       })}
