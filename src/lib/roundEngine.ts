@@ -153,21 +153,17 @@ export const roundEngine = {
     // 3. Estructura de grupos (Barajado dinámico por ronda para rotar oponentes)
     // 3. Estructura de grupos (Fisher-Yates determinístico con semilla para rotar oponentes)
     const seedString = roomId + roundNumber.toString();
-    const shuffledPlayers = [...players];
-    
-    // Función para generar un número pseudo-aleatorio basado en el seed
-    let h = 0;
+    let seed = 0;
     for (let i = 0; i < seedString.length; i++) {
-      h = Math.imul(31, h) + seedString.charCodeAt(i) | 0;
+      seed += seedString.charCodeAt(i);
     }
     
     const seededRandom = () => {
-      h = Math.imul(h ^ h >>> 16, 0x85ebca6b) | 0;
-      h = Math.imul(h ^ h >>> 13, 0xc2b2ae35) | 0;
-      h = (h ^ h >>> 16) >>> 0;
-      return h / 0xffffffff;
+      let x = Math.sin(seed++) * 10000;
+      return x - Math.floor(x);
     };
 
+    const shuffledPlayers = [...players].sort((a, b) => a.id.localeCompare(b.id));
     for (let i = shuffledPlayers.length - 1; i > 0; i--) {
       const j = Math.floor(seededRandom() * (i + 1));
       [shuffledPlayers[i], shuffledPlayers[j]] = [shuffledPlayers[j], shuffledPlayers[i]];
