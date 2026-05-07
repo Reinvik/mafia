@@ -240,22 +240,19 @@ export const roundEngine = {
             newGlobalPool += 250;
             logs.push({ room_id: roomId, round_number: roundNumber, message: `🤝 ${p.name} cooperó con éxito y ganó $${reward}`, type: 'success' });
           } else {
-            const loss = 1000 * betrayalCount;
-            playerUpdates[p.id].balance = Math.max(0, playerUpdates[p.id].balance - loss);
-            statDeltas[p.id].lost += loss;
+            // El jugador no pierde su balance anterior, simplemente su ganancia es anulada (0)
             statDeltas[p.id].betrayed += betrayalCount;
-            logs.push({ room_id: roomId, round_number: roundNumber, message: `🗡️ ${p.name} fue traicionado por ${betrayedBy.join(' y ')}. Perdió $${loss}`, type: 'danger' });
+            logs.push({ room_id: roomId, round_number: roundNumber, message: `🗡️ ${p.name} intentó cooperar pero fue saboteado por ${betrayedBy.join(' y ')}. Su ganancia fue anulada ($0)`, type: 'danger' });
           }
         } else if (action.action_type === 'betray') {
           statDeltas[p.id].betray++;
-          let loot = 0;
           let victims: string[] = [];
           let traps: string[] = [];
           let shootouts: string[] = [];
 
           // Procesar vecino Izquierdo
           if (leftAction?.action_type === 'cooperate') {
-            loot += 1000; victims.push(shuffledPlayers[leftIdx].name);
+            victims.push(shuffledPlayers[leftIdx].name);
             statDeltas[p.id].successful_betrayals++;
           } else if (leftAction?.action_type === 'betray') {
             playerUpdates[p.id].balance = Math.max(0, playerUpdates[p.id].balance - 500);
@@ -267,7 +264,7 @@ export const roundEngine = {
 
           // Procesar vecino Derecho
           if (rightAction?.action_type === 'cooperate') {
-            loot += 1000; victims.push(shuffledPlayers[rightIdx].name);
+            victims.push(shuffledPlayers[rightIdx].name);
             statDeltas[p.id].successful_betrayals++;
           } else if (rightAction?.action_type === 'betray') {
             playerUpdates[p.id].balance = Math.max(0, playerUpdates[p.id].balance - 500);
@@ -276,11 +273,12 @@ export const roundEngine = {
             playerUpdates[p.id].balance = Math.max(0, playerUpdates[p.id].balance - 1000);
             statDeltas[p.id].lost += 1000; statDeltas[p.id].trapped++; traps.push(shuffledPlayers[rightIdx].name);
           }
+          
+          if (traps.length === 0) {
+            successfulBetrayers.push(p.id);
+          }
 
-          playerUpdates[p.id].balance += loot;
-          statDeltas[p.id].earned += loot;
-
-          if (loot > 0) logs.push({ room_id: roomId, round_number: roundNumber, message: `🗡️ ${p.name} robó $${loot} a ${victims.join(' y ')}`, type: 'danger' });
+          if (victims.length > 0) logs.push({ room_id: roomId, round_number: roundNumber, message: `🗡️ ${p.name} saboteó la cooperación de ${victims.join(' y ')} y busca el pozo global`, type: 'danger' });
           if (shootouts.length > 0) logs.push({ room_id: roomId, round_number: roundNumber, message: `🔥 ${p.name} tuvo un tiroteo con ${shootouts.join(' y ')}`, type: 'danger' });
           if (traps.length > 0) logs.push({ room_id: roomId, round_number: roundNumber, message: `🪤 ${p.name} cayó en la trampa de ${traps.join(' y ')}`, type: 'warning' });
         } else if (action.action_type === 'trap') {
@@ -368,7 +366,7 @@ export const roundEngine = {
         // Traidores que superan el grupo → van al pozo
         groupBetrayers.forEach(b => {
           if (groupTrappers.length === 0) {
-            successfulBetrayers.push(b);
+            successfulBetrayers.push(b.player_id);
             statDeltas[b.player_id].successful_betrayals++;
           }
         });
@@ -392,9 +390,10 @@ export const roundEngine = {
           }
         }
       });
+    }
 
-      // 6. RESOLUCIÓN GLOBAL (traiciones exitosas)
-      if (successfulBetrayers.length >= 2) {
+    // 6. RESOLUCIÓN GLOBAL DEL POZO (aplica a todos los modos)
+    if (successfulBetrayers.length >= 2) {
         if (activeEventId === 'peace_betray') {
           const sharePerBetrayer = Math.floor(newGlobalPool / successfulBetrayers.length);
           successfulBetrayers.forEach(bId => {
@@ -414,11 +413,10 @@ export const roundEngine = {
         if (winner) {
           playerUpdates[winnerId].balance += newGlobalPool;
           statDeltas[winnerId].earned += newGlobalPool;
-          logs.push({ room_id: roomId, round_number: roundNumber, message: `¡TRAICIÓN GLOBAL! ${winner.name} burló a su grupo y vació el pozo de $${newGlobalPool}`, type: 'danger' });
+          logs.push({ room_id: roomId, round_number: roundNumber, message: `¡TRAICIÓN GLOBAL! ${winner.name} fue el único traidor exitoso y vació el pozo de $${newGlobalPool}`, type: 'danger' });
           newGlobalPool = 1000;
         }
       }
-    }
 
     // 7. Restaurar pozo mínimo si quedó bajo el umbral
     if (newGlobalPool < 1000) {
