@@ -24,7 +24,8 @@ export function useSupabaseGame() {
         status: room.status as any, 
         globalPool: room.global_pool, 
         roundNumber: room.round_number,
-        max_rounds: room.max_rounds 
+        max_rounds: room.max_rounds,
+        game_mode: room.game_mode
       });
 
       // Verificar si el jugador existe
@@ -67,7 +68,8 @@ export function useSupabaseGame() {
               status: useGameStore.getState().status, // Mantenemos el estado actual ('playing')
               globalPool: newRoom.global_pool, 
               roundNumber: newRoom.round_number,
-              max_rounds: newRoom.max_rounds 
+              max_rounds: newRoom.max_rounds,
+              game_mode: newRoom.game_mode 
             });
             
             // Retrasar el cambio de status a 'finished' por 6 segundos
@@ -77,7 +79,8 @@ export function useSupabaseGame() {
                 status: 'finished',
                 globalPool: newRoom.global_pool,
                 roundNumber: newRoom.round_number,
-                max_rounds: newRoom.max_rounds
+                max_rounds: newRoom.max_rounds,
+                game_mode: newRoom.game_mode
               });
             }, 6000);
           } else {
@@ -87,7 +90,8 @@ export function useSupabaseGame() {
               status: newRoom.status, 
               globalPool: newRoom.global_pool, 
               roundNumber: newRoom.round_number,
-              max_rounds: newRoom.max_rounds 
+              max_rounds: newRoom.max_rounds,
+              game_mode: newRoom.game_mode
             });
           }
         }

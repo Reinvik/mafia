@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
 export type GameStatus = 'lobby' | 'waiting' | 'playing' | 'shop' | 'finished';
+export type GameMode = 'classic' | 'circle';
 
 export interface Player {
   id: string;
@@ -23,9 +24,9 @@ export interface GameState {
   players: Player[];
   currentPlayer: Player | null;
   timeRemaining: number;
-  isHost: boolean;
+  gameMode: GameMode;
   
-  setRoomInfo: (info: { id: string, status: GameStatus, globalPool: number, roundNumber: number, max_rounds?: number }) => void;
+  setRoomInfo: (info: { id: string, status: GameStatus, globalPool: number, roundNumber: number, max_rounds?: number, game_mode?: GameMode }) => void;
   setPlayers: (players: Player[]) => void;
   setCurrentPlayer: (player: Player) => void;
   setTimeRemaining: (time: number) => void;
@@ -46,6 +47,7 @@ export const useGameStore = create<GameState>()(
       currentPlayer: null,
       timeRemaining: 30,
       isHost: false,
+      gameMode: 'classic',
 
       setRoomInfo: (info) => set((state) => ({ 
         ...state, 
@@ -53,7 +55,8 @@ export const useGameStore = create<GameState>()(
         status: info.status, 
         globalPool: info.globalPool, 
         roundNumber: info.roundNumber,
-        maxRounds: info.max_rounds || state.maxRounds
+        maxRounds: info.max_rounds || state.maxRounds,
+        gameMode: info.game_mode || state.gameMode
       })),
       setPlayers: (players) => set({ players }),
       setCurrentPlayer: (player) => set({ currentPlayer: player, playerId: player.id }),

@@ -9,6 +9,7 @@ export function WaitingRoom() {
   const { players, roomId, isHost, playerId } = useGameStore();
   const [maxRounds, setMaxRounds] = React.useState(10);
   const [bonusEnabled, setBonusEnabled] = React.useState(false);
+  const [gameMode, setGameMode] = React.useState<'classic' | 'circle'>('classic');
 
   const handleKickPlayer = async (targetId: string) => {
     if (!roomId || !isHost) return;
@@ -56,7 +57,8 @@ export function WaitingRoom() {
       .update({ 
         status: 'playing',
         max_rounds: maxRounds,
-        bonus_enabled: bonusEnabled
+        bonus_enabled: bonusEnabled,
+        game_mode: gameMode
       })
       .eq('id', roomId);
   };
@@ -136,6 +138,26 @@ export function WaitingRoom() {
                 <span className="text-white font-black">{maxRounds} RONDAS</span>
               </div>
               <input type="range" min="5" max="30" step="5" value={maxRounds} onChange={(e) => setMaxRounds(parseInt(e.target.value))} className="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-poker-gold" />
+            </div>
+
+            <div>
+              <label className="text-poker-gold text-[10px] font-black uppercase tracking-widest block mb-3">Modo de Juego</label>
+              <div className="grid grid-cols-2 gap-4">
+                <button 
+                  onClick={() => setGameMode('classic')}
+                  className={`p-4 rounded-2xl border-2 transition-all text-left ${gameMode === 'classic' ? 'border-poker-gold bg-poker-gold/10' : 'border-white/5 bg-gray-900/50 opacity-60'}`}
+                >
+                  <p className="text-white font-black text-xs uppercase">Clásico</p>
+                  <p className="text-[8px] text-gray-500 uppercase font-bold mt-1">Grupos de 2-3</p>
+                </button>
+                <button 
+                  onClick={() => setGameMode('circle')}
+                  className={`p-4 rounded-2xl border-2 transition-all text-left ${gameMode === 'circle' ? 'border-poker-gold bg-poker-gold/10' : 'border-white/5 bg-gray-900/50 opacity-60'}`}
+                >
+                  <p className="text-white font-black text-xs uppercase">Círculo</p>
+                  <p className="text-[8px] text-gray-500 uppercase font-bold mt-1">Anillo de Traición</p>
+                </button>
+              </div>
             </div>
 
             <label className="flex items-center gap-4 cursor-pointer group">

@@ -174,15 +174,17 @@ export const roundEngine = {
     }
 
     const groups: any[][] = [];
-    const n = shuffledPlayers.length;
-    if (n <= 3) {
-      groups.push(shuffledPlayers);
-    } else {
-      const numGroups = Math.ceil(n / 3);
-      for (let i = 0; i < numGroups; i++) groups.push([]);
-      shuffledPlayers.forEach((p, i) => {
-        groups[i % numGroups].push(p);
-      });
+    if (room.game_mode !== 'circle') {
+      const n = shuffledPlayers.length;
+      if (n <= 3) {
+        groups.push(shuffledPlayers);
+      } else {
+        const numGroups = Math.ceil(n / 3);
+        for (let i = 0; i < numGroups; i++) groups.push([]);
+        shuffledPlayers.forEach((p, i) => {
+          groups[i % numGroups].push(p);
+        });
+      }
     }
 
     // 4. Estado inicial
@@ -212,11 +214,77 @@ export const roundEngine = {
     });
 
     const logs: { room_id: string; round_number: number; message: string; type: string }[] = [];
-
-    // 5. RESOLUCIÓN POR GRUPOS
     const successfulBetrayers: any[] = [];
 
-    groups.forEach((group, groupIdx) => {
+    if (room.game_mode === 'circle') {
+      const n = shuffledPlayers.length;
+      shuffledPlayers.forEach((p, i) => {
+        const action = uniqueActionsMap.get(p.id);
+        if (!action) return;
+        const leftIdx = (i - 1 + n) % n;
+        const rightIdx = (i + 1) % n;
+        const leftAction = uniqueActionsMap.get(shuffledPlayers[leftIdx].id);
+        const rightAction = uniqueActionsMap.get(shuffledPlayers[rightIdx].id);
+        
+        statDeltas[p.id].last_action = action.action_type;
+        playerUpdates[p.id].last_action = action.action_type;
+
+        if (action.action_type === 'cooperate') {
+          statDeltas[p.id].cooperate++;
+          let betrayalCount = 0;
+          if (leftAction?.action_type === 'betray') betrayalCount++;
+          if (rightAction?.action_type === 'betray') betrayalCount++;
+          
+          if (betrayalCount === 0) {
+            const reward = activeEventId === 'double_cooperate' ? 2000 : 1000;
+            playerUpdates[p.id].balance += reward;
+            statDeltas[p.id].earned += reward;
+            newGlobalPool += 250;
+          } else {
+            const loss = 1000 * betrayalCount;
+            playerUpdates[p.id].balance = Math.max(0, playerUpdates[p.id].balance - loss);
+            statDeltas[p.id].lost += loss;
+            statDeltas[p.id].betrayed += betrayalCount;
+          }
+        } else if (action.action_type === 'betray') {
+          statDeltas[p.id].betray++;
+          let loot = 0;
+          [leftAction, rightAction].forEach(na => {
+            if (!na) return;
+            if (na.action_type === 'cooperate') {
+              loot += 1000;
+              statDeltas[p.id].successful_betrayals++;
+            } else if (na.action_type === 'betray') {
+              playerUpdates[p.id].balance = Math.max(0, playerUpdates[p.id].balance - 500);
+              statDeltas[p.id].lost += 500;
+            } else if (na.action_type === 'trap') {
+              playerUpdates[p.id].balance = Math.max(0, playerUpdates[p.id].balance - 1000);
+              statDeltas[p.id].lost += 1000;
+              statDeltas[p.id].trapped++;
+            }
+          });
+          playerUpdates[p.id].balance += loot;
+          statDeltas[p.id].earned += loot;
+        } else if (action.action_type === 'trap') {
+          statDeltas[p.id].trap++;
+          let caughtCount = 0;
+          if (leftAction?.action_type === 'betray') caughtCount++;
+          if (rightAction?.action_type === 'betray') caughtCount++;
+          if (caughtCount > 0) {
+            const reward = caughtCount * 1000;
+            playerUpdates[p.id].balance += reward;
+            statDeltas[p.id].earned += reward;
+            statDeltas[p.id].successful_traps += caughtCount;
+            logs.push({ room_id: roomId, round_number: roundNumber, message: `🛡️ ${p.name} atrapó a un traidor en el círculo`, type: 'success' });
+          } else {
+            playerUpdates[p.id].balance = Math.max(0, playerUpdates[p.id].balance - 500);
+            statDeltas[p.id].lost += 500;
+            statDeltas[p.id].failed_traps++;
+          }
+        }
+      });
+    } else {
+      // 5. RESOLUCIÓN CLÁSICA POR GRUPOS
       const groupPlayerIds = group.map(p => p.id);
       const groupActions = filteredActions.filter(a => groupPlayerIds.includes(a.player_id));
       const groupBetrayers = groupActions.filter(a => a.action_type === 'betray');
@@ -303,44 +371,30 @@ export const roundEngine = {
       }
     });
 
-    // 6. RESOLUCIÓN GLOBAL (traiciones exitosas)
-    if (successfulBetrayers.length >= 2) {
-      if (activeEventId === 'peace_betray') {
-        // EVENTO: Los traidores se reparten el pozo en paz
-        const sharePerBetrayer = Math.floor(newGlobalPool / successfulBetrayers.length);
-        successfulBetrayers.forEach(b => {
-          playerUpdates[b.player_id].balance += sharePerBetrayer;
-          statDeltas[b.player_id].earned += sharePerBetrayer;
-          statDeltas[b.player_id].event_benefits++;
-        });
-        logs.push({
-          room_id: roomId, round_number: roundNumber,
-          message: `⚖️ TREGUA ARMADA: ${successfulBetrayers.length} traidores se repartieron el pozo de $${newGlobalPool.toLocaleString()} sin guerra. $${sharePerBetrayer.toLocaleString()} c/u.`,
-          type: 'warning',
-        });
-        newGlobalPool = 1000; // Pozo vaciado con semilla
-      } else {
-        // Fuego cruzado normal → se quema el 50%
-        const burned = Math.floor(newGlobalPool * 0.5);
-        newGlobalPool = newGlobalPool - burned;
-        logs.push({
-          room_id: roomId, round_number: roundNumber,
-          message: `¡FUEGO CRUZADO! Varios traidores escaparon. Se quemaron $${burned.toLocaleString()} del pozo.`,
-          type: 'danger',
-        });
-      }
-    } else if (successfulBetrayers.length === 1) {
-      const winnerId = successfulBetrayers[0].player_id;
-      const winner = players.find(p => p.id === winnerId);
-      if (winner) {
-        playerUpdates[winnerId].balance += newGlobalPool;
-        statDeltas[winnerId].earned += newGlobalPool;
-        logs.push({
-          room_id: roomId, round_number: roundNumber,
-          message: `¡TRAICIÓN GLOBAL! ${winner.name} burló a su grupo y vació el pozo de $${newGlobalPool.toLocaleString()}.`,
-          type: 'danger',
-        });
-        newGlobalPool = 1000; // POZO A SEMILLA
+      // 6. RESOLUCIÓN GLOBAL (traiciones exitosas)
+      if (successfulBetrayers.length >= 2) {
+        if (activeEventId === 'peace_betray') {
+          const sharePerBetrayer = Math.floor(newGlobalPool / successfulBetrayers.length);
+          successfulBetrayers.forEach(bId => {
+            playerUpdates[bId].balance += sharePerBetrayer;
+            statDeltas[bId].earned += sharePerBetrayer;
+          });
+          logs.push({ room_id: roomId, round_number: roundNumber, message: `⚖️ TREGUA ARMADA: Los traidores se repartieron el pozo global`, type: 'warning' });
+          newGlobalPool = 1000;
+        } else {
+          const burned = Math.floor(newGlobalPool * 0.5);
+          newGlobalPool -= burned;
+          logs.push({ room_id: roomId, round_number: roundNumber, message: `¡FUEGO CRUZADO! Se quemaron $${burned} del pozo global`, type: 'danger' });
+        }
+      } else if (successfulBetrayers.length === 1) {
+        const winnerId = successfulBetrayers[0];
+        const winner = players.find(p => p.id === winnerId);
+        if (winner) {
+          playerUpdates[winnerId].balance += newGlobalPool;
+          statDeltas[winnerId].earned += newGlobalPool;
+          logs.push({ room_id: roomId, round_number: roundNumber, message: `¡TRAICIÓN GLOBAL! ${winner.name} burló a su grupo y vació el pozo de $${newGlobalPool}`, type: 'danger' });
+          newGlobalPool = 1000;
+        }
       }
     }
 
