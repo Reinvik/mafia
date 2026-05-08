@@ -490,15 +490,10 @@ export function GameBoard() {
                         left: '50%',
                         top: '50%',
                         transform: `translate(calc(-50% + ${px}px), calc(-50% + ${py}px))`,
-                        filter: isMyTarget ? 'drop-shadow(0 0 12px rgba(59,130,246,0.6))' : (isMe ? 'drop-shadow(0 0 15px rgba(212,175,55,0.4))' : 'none'),
+                        filter: isMe ? 'drop-shadow(0 0 15px rgba(212,175,55,0.4))' : 'none',
                         transition: 'transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s ease',
                       }}
                     >
-                      {isMyTarget && (
-                        <div className="absolute -top-12 left-1/2 -translate-x-1/2 whitespace-nowrap bg-blue-600/80 text-white text-[7px] font-bold px-2 py-0.5 rounded-full border border-blue-400/50 shadow-lg shadow-blue-900/50 z-50 animate-bounce">
-                          OPONENTE
-                        </div>
-                      )}
                       <div className="flex flex-col items-center relative">
                         {/* ANIMACIÓN DE DINERO EN LA FICHA */}
                         <AnimatePresence>
