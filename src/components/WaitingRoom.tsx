@@ -9,7 +9,7 @@ export function WaitingRoom() {
   const { players, roomId, isHost, playerId } = useGameStore();
   const [maxRounds, setMaxRounds] = React.useState(10);
   const [bonusEnabled, setBonusEnabled] = React.useState(false);
-  const [gameMode, setGameMode] = React.useState<'classic' | 'circle'>('classic');
+  const [gameMode, setGameMode] = React.useState<'classic' | 'circle'>('circle');
 
   const handleKickPlayer = async (targetId: string) => {
     if (!roomId || !isHost) return;

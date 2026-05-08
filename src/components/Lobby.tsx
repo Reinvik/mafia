@@ -5,7 +5,7 @@ import { useGameStore } from '../store/gameStore';
 import { LogOut, PlayCircle, Sword, UserX, Users, DollarSign, Handshake, RotateCw } from 'lucide-react';
 
 export function Lobby() {
-  const [name, setName] = useState('');
+  const [name, setName] = useState(() => localStorage.getItem('mafia_playerName') || '');
   const [roomCode, setRoomCode] = useState('');
   const [loading, setLoading] = useState(false);
   const { roomId, playerId, setRoomInfo, setCurrentPlayer, setIsHost, resetGame } = useGameStore();
@@ -21,6 +21,7 @@ export function Lobby() {
 
   const handleCreateRoom = async () => {
     if (!name) return alert('Dime tu nombre, forastero.');
+    localStorage.setItem('mafia_playerName', name);
     setLoading(true);
     
     const { data: room, error: roomErr } = await supabase
@@ -54,6 +55,7 @@ export function Lobby() {
   const handleJoinRoom = async () => {
     const code = roomCode.trim();
     if (!name || !code) return alert('Falta tu nombre o el código de la sala.');
+    localStorage.setItem('mafia_playerName', name);
     setLoading(true);
 
     const { data: room, error: roomErr } = await supabase
