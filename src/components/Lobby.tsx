@@ -4,19 +4,42 @@ import { supabase } from '../lib/supabase';
 import { useGameStore } from '../store/gameStore';
 import { LogOut, PlayCircle, Sword, UserX, Users, DollarSign, Handshake, RotateCw } from 'lucide-react';
 
+const CITIES = [
+  'Las Vegas', 'Chicago', 'Nueva York', 'Miami', 'La Habana', 'Sicilia', 
+  'Nápoles', 'Londres', 'Moscú', 'Tokio', 'Berlín', 'Marsella', 'Macao', 
+  'Bogotá', 'Medellín', 'Tijuana', 'Ciudad de México', 'Buenos Aires', 'Santiago'
+];
+
 export function Lobby() {
   const [name, setName] = useState(() => localStorage.getItem('mafia_playerName') || '');
   const [roomCode, setRoomCode] = useState('');
   const [loading, setLoading] = useState(false);
+  const [activeRooms, setActiveRooms] = useState<any[]>([]);
   const { roomId, playerId, setRoomInfo, setCurrentPlayer, setIsHost, resetGame } = useGameStore();
 
-  // Leer código de sala desde la URL (?room=XXXX)
+  // Leer código de sala desde la URL (?room=XXXX) y cargar salas activas
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const roomParam = params.get('room');
     if (roomParam) {
       setRoomCode(roomParam);
     }
+
+    const fetchRooms = async () => {
+      const { data } = await supabase
+        .from('mafia_rooms')
+        .select('*')
+        .in('status', ['waiting', 'playing'])
+        .order('created_at', { ascending: false });
+      if (data) setActiveRooms(data);
+    };
+    fetchRooms();
+
+    const roomsSub = supabase.channel('lobby_rooms')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'mafia_rooms' }, fetchRooms)
+      .subscribe();
+
+    return () => { supabase.removeChannel(roomsSub); };
   }, []);
 
   const handleCreateRoom = async () => {
@@ -24,9 +47,10 @@ export function Lobby() {
     localStorage.setItem('mafia_playerName', name);
     setLoading(true);
     
+    const cityName = CITIES[Math.floor(Math.random() * CITIES.length)];
     const { data: room, error: roomErr } = await supabase
       .from('mafia_rooms')
-      .insert([{ status: 'waiting', global_pool: 2000, round_number: 1 }])
+      .insert([{ status: 'waiting', global_pool: 2000, round_number: 1, name: cityName }])
       .select()
       .single();
 
@@ -224,6 +248,32 @@ export function Lobby() {
                     UNIRSE A LA MISIÓN
                   </button>
                 </div>
+
+                {activeRooms.length > 0 && (
+                  <div className="mt-6">
+                    <h3 className="text-poker-gold text-[10px] font-black uppercase tracking-[0.2em] mb-3">Misiones en curso</h3>
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-2 scrollbar-hide">
+                      {activeRooms.map(room => (
+                        <div key={room.id} className="bg-gray-900 border border-gray-700 p-3 rounded-xl flex items-center justify-between">
+                          <div>
+                            <p className="text-white font-bold text-sm">{room.name || room.id.substring(0,6)}</p>
+                            <p className={`text-[10px] font-black uppercase tracking-widest ${room.status === 'playing' ? 'text-blue-400' : 'text-green-400'}`}>
+                              {room.status === 'playing' ? 'Jugando' : 'En Espera'}
+                            </p>
+                          </div>
+                          <button 
+                            onClick={() => {
+                              setRoomCode(room.id);
+                            }}
+                            className="text-[10px] bg-gray-800 hover:bg-gray-700 text-poker-gold px-3 py-2 rounded-lg font-bold uppercase transition-colors"
+                          >
+                            SELECCIONAR
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
