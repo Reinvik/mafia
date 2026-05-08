@@ -447,18 +447,7 @@ export function GameBoard() {
 
                   // Identificar si este jugador es mi oponente directo
                   const isMe = p.id === currentPlayer?.id;
-                  let isMyTarget = false;
-                  if (gameMode === 'circle' && currentPlayer) {
-                    const myIdx = group.findIndex(m => m.id === currentPlayer.id);
-                    if (myIdx !== -1) {
-                      const lIdx = (myIdx - 1 + group.length) % group.length;
-                      const rIdx = (myIdx + 1) % group.length;
-                      isMyTarget = (i === lIdx || i === rIdx);
-                    }
-                  } else if (gameMode === 'classic') {
-                    const amIInThisGroup = group.some(m => m.id === currentPlayer?.id);
-                    isMyTarget = amIInThisGroup && !isMe;
-                  }
+                  // (Lógica isMyTarget eliminada porque ya no usamos la etiqueta visual)
                   // === LÓGICA LIMPIA DE CHIP ===
                   // Determinar qué muestra la cara trasera:
                   // - En 'revealed': acción de esta ronda (revealedActions)
