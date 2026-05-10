@@ -112,6 +112,10 @@ export function useSupabaseGame() {
               }
 
               if (data[0]?.id === playerId) setIsHost(true);
+
+              // REFUERZO: Actualizar también el objeto currentPlayer individualmente
+              const me = data.find(p => p.id === playerId);
+              if (me) setCurrentPlayer(me as any);
             }
           });
         }

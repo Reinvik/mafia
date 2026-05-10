@@ -25,7 +25,7 @@ interface GameLog {
 }
 
 export function GameBoard() {
-  const { globalPool, roundNumber, maxRounds, players, currentPlayer, roomId, isHost, gameMode } = useGameStore();
+  const { globalPool, roundNumber, maxRounds, players, currentPlayer, roomId, isHost, gameMode, setPlayers, setCurrentPlayer } = useGameStore();
 
   const [timeLeft, setTimeLeft] = useState(30);
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
@@ -110,6 +110,12 @@ export function GameBoard() {
           };
           prevBalancesRef.current[p.id] = p.balance; // Guardar para la próxima
         });
+
+        // ACTUALIZACIÓN CRÍTICA: Guardar los nuevos datos en el store global
+        // Esto arregla el bug de dinero en 0 en algunos móviles
+        setPlayers(updatedPlayers as any[]);
+        const me = updatedPlayers.find(p => p.id === currentPlayer?.id);
+        if (me) setCurrentPlayer(me as any);
 
 
         setTimeout(() => {
