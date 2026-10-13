@@ -35,11 +35,16 @@ export function Lobby() {
     };
     fetchRooms();
 
+    const pollInterval = setInterval(fetchRooms, 4000);
+
     const roomsSub = supabase.channel('lobby_rooms')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'mafia_rooms' }, fetchRooms)
-      .subscribe();
+      .subscribe(undefined, 30000);
 
-    return () => { supabase.removeChannel(roomsSub); };
+    return () => {
+      clearInterval(pollInterval);
+      supabase.removeChannel(roomsSub);
+    };
   }, []);
 
   const handleCreateRoom = async () => {

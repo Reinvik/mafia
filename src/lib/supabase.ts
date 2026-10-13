@@ -8,4 +8,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 // Usamos el esquema public por defecto para evitar problemas de configuración en el dashboard
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  realtime: {
+    timeout: 30000,
+    params: {
+      eventsPerSecond: 20,
+    },
+  },
+});

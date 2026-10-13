@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../store/gameStore';
-import { useSupabaseGame } from '../hooks/useSupabaseGame';
+import { sendRoundResolving } from '../hooks/useSupabaseGame';
 import { supabase } from '../lib/supabase';
 import { roundEngine } from '../lib/roundEngine';
 import { Check, ShoppingBag, History, BarChart2, Crown, Zap, X, RotateCw, Handshake, UserX, HelpCircle, EyeOff, Search } from 'lucide-react';
@@ -39,7 +39,11 @@ export function GameBoard() {
   const [stats, setStats] = useState<any[]>([]);
   const logEndRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
-  const { sendRoundResolving } = useSupabaseGame();
+
+  const roundNumberRef = useRef<number>(roundNumber);
+  useEffect(() => {
+    roundNumberRef.current = roundNumber;
+  }, [roundNumber]);
 
   // === MÁQUINA DE ESTADOS DE FICHAS ===
   type ChipPhase = 'playing' | 'revealed';
@@ -240,11 +244,11 @@ export function GameBoard() {
             if (prev.some(l => l.id === payload.new.id)) return prev;
             return [...prev, payload.new as GameLog];
           });
-        }).subscribe();
+        }).subscribe(undefined, 30000);
 
       const actionsChannel = supabase.channel(`ready_check:${roomId}`)
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mafia_actions', filter: `room_id=eq.${roomId}` }, (payload: any) => {
-           if (payload.new.round_number === roundNumber) {
+           if (payload.new.round_number === roundNumberRef.current) {
              setReadyPlayers(prev => {
                const newSet = new Set([...prev, payload.new.player_id]);
                // Sonido click-clack cuando alguien (tú o rival) selecciona
@@ -252,7 +256,7 @@ export function GameBoard() {
                return newSet;
              });
            }
-        }).subscribe();
+        }).subscribe(undefined, 30000);
 
       // Escuchar cambios de evento en la sala
       const roomChannel = supabase.channel(`room_event:${roomId}`)
@@ -262,7 +266,7 @@ export function GameBoard() {
           // Refrescar stats
           supabase.from('mafia_player_stats').select('*').eq('room_id', roomId)
             .then(({ data }) => { if (data) setStats(data); });
-        }).subscribe();
+        }).subscribe(undefined, 30000);
 
       return () => { 
         supabase.removeChannel(logChannel);
@@ -270,7 +274,7 @@ export function GameBoard() {
         supabase.removeChannel(roomChannel);
       };
     }
-  }, [roomId, roundNumber]);
+  }, [roomId]);
 
   // (El broadcast listener de round_resolved ha sido eliminado porque ahora la resolución se maneja de forma robusta con fetch directos al cambiar la ronda)
 
@@ -282,7 +286,7 @@ export function GameBoard() {
       const triggerResolve = async () => {
         if (!isResolving) {
           setIsResolving(true);
-          await sendRoundResolving();
+          await sendRoundResolving(roomId!);
           roundEngine.resolveRound(roomId!, roundNumber).finally(() => {});
         }
       };
@@ -293,14 +297,50 @@ export function GameBoard() {
 
   useEffect(() => {
     // Nueva ronda: resetear estado de jugabilidad
-    // Las fichas volverán a mostrar last_action del nuevo roundNumber automáticamente
-    // porque chipPhase vuelve a 'playing' y la condición de render usa p.last_action
     setSelectedAction(null);
     setTimeLeft(30);
     setPurchased([]);
-    setReadyPlayers(new Set());
     setIsResolving(false);
-    // Nota: chipPhase, revealedActions y layoutRound se resetean al terminar la animación en fetchResolutionData
+
+    // Consulta inicial de acciones registradas para esta ronda
+    const fetchRoundActions = async () => {
+      if (!roomId) return;
+      const { data: currentActions } = await supabase
+        .from('mafia_actions')
+        .select('player_id')
+        .eq('room_id', roomId)
+        .eq('round_number', roundNumber);
+
+      if (currentActions && currentActions.length > 0) {
+        setReadyPlayers(new Set(currentActions.map(a => a.player_id)));
+        if (currentActions.some(a => a.player_id === currentPlayer?.id)) {
+          setSelectedAction('selected');
+        }
+      } else {
+        setReadyPlayers(new Set());
+      }
+    };
+
+    fetchRoundActions();
+
+    // Polling de respaldo cada 2s para asegurar que readyPlayers se mantenga exacto
+    const actionsPoll = setInterval(async () => {
+      if (!roomId) return;
+      const { data: currentActions } = await supabase
+        .from('mafia_actions')
+        .select('player_id')
+        .eq('room_id', roomId)
+        .eq('round_number', roundNumber);
+
+      if (currentActions) {
+        setReadyPlayers(prev => {
+          if (currentActions.length === prev.size && currentActions.every(a => prev.has(a.player_id))) {
+            return prev;
+          }
+          return new Set(currentActions.map(a => a.player_id));
+        });
+      }
+    }, 2000);
 
     const intervalId = setInterval(() => {
       setTimeLeft((prev) => {
@@ -308,7 +348,7 @@ export function GameBoard() {
           clearInterval(intervalId);
           if (isHost && !isResolving) {
             setIsResolving(true);
-            sendRoundResolving().then(() => {
+            sendRoundResolving(roomId!).then(() => {
               roundEngine.resolveRound(roomId!, roundNumber).finally(() => {});
             });
           }
@@ -318,7 +358,10 @@ export function GameBoard() {
       });
     }, 1000);
 
-    return () => clearInterval(intervalId);
+    return () => {
+      clearInterval(intervalId);
+      clearInterval(actionsPoll);
+    };
   }, [roundNumber, isHost, roomId]);
 
   const handleAction = async (type: string) => {
