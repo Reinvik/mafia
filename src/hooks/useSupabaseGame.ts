@@ -74,6 +74,12 @@ export function useSupabaseGame() {
         resetGame();
         return;
       }
+
+      // Si la partida ya finalizó ('finished'), no sobreescribir los balances durante la premiación
+      if (currentStoreStatus === 'finished' && room.status === 'finished') {
+        if (plist[0].id === playerId) setIsHost(true);
+        return;
+      }
       
       setPlayers(plist as any[]);
       setCurrentPlayer(me as any);
@@ -136,6 +142,7 @@ export function useSupabaseGame() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'mafia_players' }, (payload) => {
         const player = (payload.new || payload.old) as any;
         if (player && player.room_id === roomId) {
+          if (useGameStore.getState().status === 'finished') return;
           supabase.from('mafia_players').select('*').eq('room_id', roomId).order('created_at', { ascending: true }).then(({data}) => {
             if (data && isMounted) {
               setPlayers(data as any[]);
