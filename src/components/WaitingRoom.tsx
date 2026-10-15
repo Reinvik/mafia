@@ -3,17 +3,21 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../store/gameStore';
 import { supabase } from '../lib/supabase';
 import { botEngine } from '../lib/botEngine';
-import { Users, Play, Bot, Copy, Share2, UserMinus, LogOut } from 'lucide-react';
+import { soundEngine } from '../lib/soundEngine';
+import { Users, Play, Bot, Copy, Share2, UserMinus, LogOut, Check } from 'lucide-react';
 
 export function WaitingRoom() {
   const { players, roomId, isHost, playerId } = useGameStore();
   const [maxRounds, setMaxRounds] = React.useState(10);
   const [bonusEnabled, setBonusEnabled] = React.useState(true);
   const [gameMode, setGameMode] = React.useState<'classic' | 'circle'>('circle');
+  const [copied, setCopied] = React.useState(false);
+  const [addingBot, setAddingBot] = React.useState(false);
 
   const handleKickPlayer = async (targetId: string) => {
     if (!roomId || !isHost) return;
     if (targetId === playerId) return; // No te puedes expulsar a ti mismo
+    soundEngine.playClick();
     
     const { error } = await supabase
       .from('mafia_players')
@@ -28,6 +32,7 @@ export function WaitingRoom() {
 
   const handleLeaveRoom = async () => {
     if (!roomId || !playerId) return;
+    soundEngine.playClick();
     if (!confirm("¿Estás seguro de que quieres abandonar la sala?")) return;
     
     const { error } = await supabase
@@ -38,19 +43,22 @@ export function WaitingRoom() {
     if (error) {
       console.error("Error al salir:", error);
     } else {
-      // El store debería limpiarse vía suscripción, pero forzamos reset local para UX inmediata
       window.location.reload(); 
     }
   };
 
   const handleAddBot = async () => {
-    if (!roomId) return;
+    if (!roomId || addingBot) return;
+    soundEngine.playClick();
+    setAddingBot(true);
     await botEngine.addBot(roomId);
+    setAddingBot(false);
   };
 
   const handleStartGame = async () => {
     if (!roomId) return;
     if (players.length < 2) return alert('Se necesitan al menos 2 mafiosos para empezar.');
+    soundEngine.playLockIn();
     
     await supabase
       .from('mafia_rooms')
@@ -65,9 +73,11 @@ export function WaitingRoom() {
 
   const copyCode = () => {
     if (roomId) {
+      soundEngine.playClick();
       const inviteUrl = `${window.location.origin}/?room=${roomId}`;
       navigator.clipboard.writeText(inviteUrl);
-      alert('¡Link de invitación copiado!');
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
@@ -89,8 +99,10 @@ export function WaitingRoom() {
             </h2>
             <div className="mt-3 flex gap-2">
               <div onClick={copyCode} className="inline-flex items-center gap-2 bg-gray-900 px-4 py-2 rounded-xl border border-gray-700 cursor-pointer hover:border-poker-gold transition-colors group">
-                <span className="text-xs font-mono text-gray-400 group-hover:text-poker-gold">ID: {roomId?.slice(0,8)}...</span>
-                <Copy className="w-3 h-3 text-poker-gold" />
+                <span className="text-xs font-mono text-gray-400 group-hover:text-poker-gold">
+                  {copied ? '¡LINK COPIADO!' : `ID: ${roomId?.slice(0,8)}...`}
+                </span>
+                {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-poker-gold" />}
               </div>
               <button onClick={shareToWhatsApp} className="inline-flex items-center gap-2 bg-green-600/20 px-4 py-2 rounded-xl border border-green-600/50 hover:bg-green-600/40 transition-colors text-green-400 text-xs font-bold uppercase tracking-widest">
                 <Share2 size={14} /> WhatsApp

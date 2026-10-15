@@ -2,14 +2,21 @@ import { useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useGameStore } from '../store/gameStore';
 import { botEngine } from '../lib/botEngine';
+import { soundEngine } from '../lib/soundEngine';
 
-export const sendRoundResolving = async (roomId: string) => {
+export const sendRoundResolving = async (roomId: string, roundNumber?: number) => {
   if (!roomId) return;
-  await supabase.channel(`room:${roomId}`).send({
-    type: 'broadcast',
-    event: 'round_resolving',
-    payload: { timestamp: Date.now() }
-  });
+  const existingChannel = supabase.getChannels().find(ch => ch.topic === `realtime:room:${roomId}`);
+  const targetChannel = existingChannel || supabase.channel(`room:${roomId}`);
+  try {
+    await targetChannel.send({
+      type: 'broadcast',
+      event: 'round_resolving',
+      payload: { round: roundNumber, timestamp: Date.now() }
+    });
+  } catch {
+    // Fallback silencioso: la transición de ronda se sincroniza por base de datos
+  }
 };
 
 export function useSupabaseGame() {
@@ -52,7 +59,7 @@ export function useSupabaseGame() {
               game_mode: room.game_mode
             });
           }
-        }, 6000);
+        }, 5000);
       } else {
         setRoomInfo({ 
           id: room.id, 
@@ -92,10 +99,15 @@ export function useSupabaseGame() {
 
     fetchState();
 
-    // Polling ligero de respaldo (cada 2.5s) para mantener sincronía en móviles o microcortes de socket
+    const handleForceSync = () => {
+      fetchState();
+    };
+    window.addEventListener('force_game_sync', handleForceSync);
+
+    // Polling ligero de respaldo (cada 2s) para mantener sincronía en móviles o microcortes de socket
     const pollInterval = setInterval(() => {
       fetchState();
-    }, 2500);
+    }, 2000);
 
     // Limpiar canales previos para esta sala
     supabase.getChannels().forEach(ch => {
@@ -126,7 +138,7 @@ export function useSupabaseGame() {
                   game_mode: newRoom.game_mode
                 });
               }
-            }, 6000);
+            }, 5000);
           } else {
             setRoomInfo({ 
               id: newRoom.id, 
@@ -162,18 +174,15 @@ export function useSupabaseGame() {
           });
         }
       })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mafia_actions' }, () => {
-        // Solo notificamos sonido de click-clack, la resolución la maneja centralizadamente GameBoard.tsx
-      })
       .on('broadcast', { event: 'action_lock_in' }, () => {
-        new Audio('/click-clack.mp3').play().catch(() => {});
+        soundEngine.playLockIn();
         window.dispatchEvent(new CustomEvent('screenshake'));
       })
       .on('broadcast', { event: 'round_resolved' }, (payload) => {
         window.dispatchEvent(new CustomEvent('round_resolved', { detail: payload.payload }));
       })
-      .on('broadcast', { event: 'round_resolving' }, () => {
-        window.dispatchEvent(new CustomEvent('round_resolving'));
+      .on('broadcast', { event: 'round_resolving' }, (payload) => {
+        window.dispatchEvent(new CustomEvent('round_resolving', { detail: payload.payload }));
       })
       .subscribe((subStatus) => {
         console.log(`Estado de suscripción para sala ${roomId}:`, subStatus);
@@ -181,6 +190,7 @@ export function useSupabaseGame() {
 
     return () => {
       isMounted = false;
+      window.removeEventListener('force_game_sync', handleForceSync);
       clearInterval(pollInterval);
       supabase.removeChannel(channel);
     };
@@ -190,13 +200,14 @@ export function useSupabaseGame() {
   useEffect(() => {
     if (!isHost || !roomId || status !== 'playing') return;
     
-    // Simular bots (con delay para realismo)
-    const botTimer = setTimeout(() => {
-      botEngine.simulateBotActions(roomId, roundNumber, players);
-    }, 2000);
+    // En la ronda 1 los bots votan rápido (1.2s+); en rondas > 1 esperan a que termine la revelación de 3.5s
+    const baseDelay = roundNumber > 1 ? 3800 : 1200;
+    botEngine.simulateBotActions(roomId, roundNumber, players, baseDelay);
 
-    return () => clearTimeout(botTimer);
-  }, [status, roundNumber, isHost, roomId]);
+    return () => {
+      botEngine.clearBotTimers();
+    };
+  }, [status, roundNumber, isHost, roomId, players.length]);
 
-  return { sendRoundResolving: () => sendRoundResolving(roomId || '') };
+  return { sendRoundResolving: (r?: number) => sendRoundResolving(roomId || '', r) };
 }

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore, type Player } from '../store/gameStore';
 import { supabase } from '../lib/supabase';
+import { soundEngine } from '../lib/soundEngine';
 import { Trophy, LogOut, Skull, Star, Zap, Shield, Target, Ghost, Medal, Crown } from 'lucide-react';
 
 interface Award {
@@ -167,9 +168,9 @@ export function GameOver() {
     if (currentAwardIdx >= 0 && currentAwardIdx < awards.length) {
       const award = awards[currentAwardIdx];
 
-      // 1. A los 1200ms de mostrar la tarjeta: sumar los $1,000 y reproducir sonido de monedas
+      // 1. A los 1200ms de mostrar la tarjeta: sumar los $1,000 y reproducir sonido de monedas sin latencia
       const moneyTimer = setTimeout(() => {
-        new Audio('https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3').play().catch(() => {});
+        soundEngine.playCash();
 
         setLocalPlayers(prev => {
           const updated = prev.map(p => {
@@ -318,6 +319,32 @@ export function GameOver() {
             <button 
               onClick={async () => {
                 if (!roomId) return;
+                soundEngine.playClick();
+                await Promise.all([
+                  supabase.from('mafia_players').update({ 
+                    balance: 0,
+                    last_action: null,
+                    is_capo: false,
+                    is_incognito: false,
+                    has_accountant: false
+                  }).eq('room_id', roomId),
+                  supabase.from('mafia_actions').delete().eq('room_id', roomId),
+                  supabase.from('mafia_logs').delete().eq('room_id', roomId),
+                  supabase.from('mafia_player_stats').update({
+                    total_cooperate: 0,
+                    total_betray: 0,
+                    total_trap: 0,
+                    successful_traps: 0,
+                    failed_traps: 0,
+                    successful_betrayals: 0,
+                    event_benefits: 0,
+                    total_earned: 0,
+                    total_lost: 0,
+                    times_betrayed: 0,
+                    times_trapped: 0
+                  }).eq('room_id', roomId)
+                ]);
+
                 await supabase.from('mafia_rooms').update({
                   status: 'waiting',
                   round_number: 1,
@@ -325,28 +352,6 @@ export function GameOver() {
                   active_event: null,
                   active_event_label: null
                 }).eq('id', roomId);
-                
-                await supabase.from('mafia_players').update({ 
-                  balance: 0,
-                  last_action: null 
-                }).eq('room_id', roomId);
-                
-                await supabase.from('mafia_actions').delete().eq('room_id', roomId);
-                await supabase.from('mafia_logs').delete().eq('room_id', roomId);
-                
-                await supabase.from('mafia_player_stats').update({
-                  total_cooperate: 0,
-                  total_betray: 0,
-                  total_trap: 0,
-                  successful_traps: 0,
-                  failed_traps: 0,
-                  successful_betrayals: 0,
-                  event_benefits: 0,
-                  total_earned: 0,
-                  total_lost: 0,
-                  times_betrayed: 0,
-                  times_trapped: 0
-                }).eq('room_id', roomId);
               }}
               className="w-full bg-poker-gold text-black font-black py-5 rounded-2xl hover:bg-yellow-500 transition-all flex items-center justify-center gap-3 text-lg shadow-[0_6px_0_#9a7d25] active:translate-y-1 active:shadow-none"
             >
