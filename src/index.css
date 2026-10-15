@@ -4,6 +4,7 @@
   --color-mafia-deep: #050505;
   --color-mafia-surface: #0a0a0a;
   --color-poker-gold: #D4AF37;
+  --color-poker-green: #0d2b1a;
   --background-image-grain: url('https://www.transparenttextures.com/patterns/black-paper.png');
 }
 
@@ -12,4 +13,23 @@
     @apply bg-mafia-deep text-white font-sans select-none;
     background-image: var(--background-image-grain);
   }
+}
+
+/* Textura táctil de paño de fieltro esmeralda de casino */
+.poker-felt-surface {
+  background-color: #081d13;
+  background-image: 
+    radial-gradient(circle at 50% 50%, rgba(20, 68, 42, 0.95) 0%, rgba(10, 38, 23, 0.98) 50%, rgba(5, 18, 11, 1) 85%, rgba(2, 8, 5, 1) 100%),
+    repeating-linear-gradient(45deg, rgba(0, 0, 0, 0.04) 0px, rgba(0, 0, 0, 0.04) 1px, transparent 1px, transparent 3px),
+    repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.015) 0px, rgba(255, 255, 255, 0.015) 1px, transparent 1px, transparent 3px);
+}
+
+/* Riel acolchado de caoba y cuero con ribete de latón/oro */
+.poker-leather-rail {
+  border-color: #1a120b;
+  box-shadow: 
+    0 30px 80px rgba(0, 0, 0, 0.95),
+    inset 0 4px 10px rgba(255, 255, 255, 0.08),
+    inset 0 -8px 22px rgba(0, 0, 0, 0.92),
+    0 0 0 2px rgba(212, 175, 55, 0.4);
 }

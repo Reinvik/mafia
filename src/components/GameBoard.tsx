@@ -398,7 +398,18 @@ export function GameBoard() {
   };
 
   return (
-    <div className="w-full h-screen bg-mafia-deep flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden relative selection:bg-poker-gold selection:text-black">
+    <div className={`w-full h-screen flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden relative selection:bg-poker-gold selection:text-black transition-colors duration-1000 ${
+      timeLeft <= 10 
+        ? 'bg-[radial-gradient(ellipse_at_50%_40%,_#1c0709_0%,_#0a0203_55%,_#020001_100%)]' 
+        : 'bg-[radial-gradient(ellipse_at_50%_40%,_#091710_0%,_#050d08_50%,_#020403_85%,_#000000_100%)]'
+    }`}>
+      {/* Luz cenital cálida sobre la mesa (Lámpara de Garito) */}
+      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_60%_50%_at_50%_45%,_rgba(212,175,55,0.08)_0%,_transparent_70%)] z-0" />
+
+      {/* Viñeta roja de alta tensión en los últimos 10 segundos */}
+      {timeLeft <= 10 && (
+        <div className="fixed inset-0 pointer-events-none shadow-[inset_0_0_100px_rgba(220,38,38,0.35)] animate-pulse z-40 transition-opacity duration-500" />
+      )}
 
 
       <div className="flex-1 flex flex-col p-4 sm:p-6 relative">
@@ -484,107 +495,145 @@ export function GameBoard() {
 
         <div className="flex-1 relative flex flex-wrap items-center justify-center gap-4 sm:gap-20 min-h-0 py-2 px-2 overflow-y-auto scrollbar-hide">
           {playerGroups.map((group, groupIdx) => (
-            <div key={`group-${groupIdx}`} className={`relative ${gameMode === 'circle' ? 'w-72 h-72 sm:w-[40rem] sm:h-[40rem]' : 'w-48 h-48 sm:w-80 sm:h-80'} rounded-[3rem] border-2 border-poker-gold/10 bg-black/20 backdrop-blur-sm flex items-center justify-center`}>
-                {/* SVG removed to hide blue lines */}
-                {group.map((p, i) => {
-                  const pAngle = (i / group.length) * (2 * Math.PI) - (Math.PI / 2);
-                  const pRadius = gameMode === 'circle' 
-                    ? (isMobile ? 110 : 250) 
-                    : (isMobile ? 65 : 125); 
-                  const px = Math.cos(pAngle) * pRadius;
-                  const py = Math.sin(pAngle) * pRadius;
+            <div 
+              key={`group-${groupIdx}`} 
+              className={`relative ${gameMode === 'circle' ? 'w-72 h-72 sm:w-[40rem] sm:h-[40rem] rounded-full' : 'w-48 h-48 sm:w-80 sm:h-80 rounded-[3.5rem]'} border-[10px] sm:border-[20px] poker-leather-rail poker-felt-surface flex items-center justify-center transition-all duration-700 shadow-2xl overflow-visible`}
+            >
+              {/* Línea concéntrica de apuesta grabada en oro */}
+              <div className={`absolute pointer-events-none ${gameMode === 'circle' ? 'inset-6 sm:inset-12 rounded-full' : 'inset-4 sm:inset-8 rounded-[2.5rem]'} border border-dashed border-poker-gold/25`} />
 
-                  // Identificar si este jugador es mi oponente directo
-                  const isMe = p.id === currentPlayer?.id;
-                  // (Lógica isMyTarget eliminada porque ya no usamos la etiqueta visual)
-                  // === LÓGICA LIMPIA DE CHIP ===
-                  // Determinar qué muestra la cara trasera:
-                  // - En 'revealed': acción de esta ronda (revealedActions)
-                  // - En 'playing': acción pasada (last_action del jugador)
-                  const backIcon = chipPhase === 'revealed'
-                    ? revealedActions[p.id]
-                    : (p as any).last_action || '';
+              {/* Monograma en bajo relieve en el centro del paño */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none opacity-20">
+                <div className="flex flex-col items-center justify-center text-center">
+                  <div className="w-20 h-20 sm:w-40 sm:h-40 rounded-full border border-poker-gold/30 flex items-center justify-center p-2 sm:p-4 relative shadow-[inset_0_0_20px_rgba(212,175,55,0.15)]">
+                    <div className="absolute inset-1 sm:inset-2 rounded-full border border-dashed border-poker-gold/20" />
+                    <Revolver size={isMobile ? 26 : 48} className="text-poker-gold rotate-45 opacity-80" />
+                    <Revolver size={isMobile ? 26 : 48} className="text-poker-gold -rotate-45 opacity-80 absolute" />
+                  </div>
+                  <span className="text-[7px] sm:text-[10px] font-black uppercase tracking-[0.35em] text-poker-gold mt-1.5 sm:mt-2">
+                    ALTA TRAICIÓN
+                  </span>
+                  <span className="text-[5px] sm:text-[7px] font-mono uppercase tracking-[0.2em] text-poker-gold/60">
+                    CLUB PRIVADO • SALÓN VIP
+                  </span>
+                </div>
+              </div>
 
-                  // La ficha se gira cuando:
-                  // - chipPhase === 'revealed' → todos girados mostrando acción actual
-                  // - chipPhase === 'playing' && player NO está listo && tiene acción pasada → muestra last_action
-                  const isReady = readyPlayers.has(p.id);
-                  const isFlipped =
-                    chipPhase === 'revealed'
-                    || (chipPhase === 'playing' && !isReady && !!backIcon);
+              {/* Asientos incrustados para cada jugador (Seat Pods) */}
+              {group.map((p, i) => {
+                const pAngle = (i / group.length) * (2 * Math.PI) - (Math.PI / 2);
+                const pRadius = gameMode === 'circle' 
+                  ? (isMobile ? 110 : 250) 
+                  : (isMobile ? 65 : 125); 
+                const px = Math.cos(pAngle) * pRadius;
+                const py = Math.sin(pAngle) * pRadius;
 
-                  // Checkmark: visible solo cuando el jugador eligió Y estamos en fase playing
-                  const showCheck = isReady && chipPhase === 'playing';
+                return (
+                  <div
+                    key={`seat-${p.id}`}
+                    className="absolute pointer-events-none rounded-full bg-black/50 border border-poker-gold/20 shadow-[inset_0_4px_12px_rgba(0,0,0,0.95)]"
+                    style={{
+                      left: '50%',
+                      top: '50%',
+                      width: isMobile ? '46px' : '72px',
+                      height: isMobile ? '46px' : '72px',
+                      transform: `translate(calc(-50% + ${px}px), calc(-50% + ${py}px))`,
+                      transition: 'transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                    }}
+                  />
+                );
+              })}
 
-                  const change = playerChanges[p.id];
+              {/* Fichas Interactivas de los Jugadores */}
+              {group.map((p, i) => {
+                const pAngle = (i / group.length) * (2 * Math.PI) - (Math.PI / 2);
+                const pRadius = gameMode === 'circle' 
+                  ? (isMobile ? 110 : 250) 
+                  : (isMobile ? 65 : 125); 
+                const px = Math.cos(pAngle) * pRadius;
+                const py = Math.sin(pAngle) * pRadius;
 
-                  return (
-                    // Posición centrada: left/top al 50% del contenedor + offset circular
-                    // CSS transition para suavizar el intercambio entre rondas
-                     <div
-                      key={p.id}
-                      className={`absolute z-30 transition-all duration-500 ${isMe ? 'scale-110' : ''}`}
-                      style={{
-                        left: '50%',
-                        top: '50%',
-                        transform: `translate(calc(-50% + ${px}px), calc(-50% + ${py}px))`,
-                        filter: isMe ? 'drop-shadow(0 0 15px rgba(212,175,55,0.4))' : 'none',
-                        transition: 'transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s ease',
-                      }}
-                    >
-                      <div className="flex flex-col items-center relative">
-                        {/* ANIMACIÓN DE DINERO EN LA FICHA */}
+                // Identificar si este jugador es mi oponente directo
+                const isMe = p.id === currentPlayer?.id;
+                
+                // === LÓGICA LIMPIA DE CHIP ===
+                const backIcon = chipPhase === 'revealed'
+                  ? revealedActions[p.id]
+                  : (p as any).last_action || '';
+
+                const isReady = readyPlayers.has(p.id);
+                const isFlipped =
+                  chipPhase === 'revealed'
+                  || (chipPhase === 'playing' && !isReady && !!backIcon);
+
+                const showCheck = isReady && chipPhase === 'playing';
+                const change = playerChanges[p.id];
+
+                return (
+                  <div
+                    key={p.id}
+                    className={`absolute z-30 transition-all duration-500 ${isMe ? 'scale-110' : ''}`}
+                    style={{
+                      left: '50%',
+                      top: '50%',
+                      transform: `translate(calc(-50% + ${px}px), calc(-50% + ${py}px))`,
+                      filter: isMe ? 'drop-shadow(0 0 15px rgba(212,175,55,0.4))' : 'none',
+                      transition: 'transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s ease',
+                    }}
+                  >
+                    <div className="flex flex-col items-center relative">
+                      {/* ANIMACIÓN DE DINERO EN LA FICHA */}
+                      <AnimatePresence>
+                        {change && <FloatingMoney amount={change.amount} type={change.type} />}
+                      </AnimatePresence>
+
+                      <div className="relative w-10 h-10 sm:w-16 sm:h-16 [perspective:1000px]">
+                        <motion.div
+                          className="w-full h-full relative [transform-style:preserve-3d]"
+                          animate={{ rotateY: isFlipped ? 180 : 0 }}
+                          transition={{ duration: 0.6, type: 'spring' }}
+                        >
+                          {/* Cara frontal: inicial del nombre */}
+                          <div className={`absolute inset-0 backface-hidden rounded-full border-2 sm:border-4 ${p.id === currentPlayer.id ? 'border-blue-400 shadow-[0_0_15px_#3b82f6]' : p.is_capo ? 'border-poker-gold shadow-[0_0_12px_#D4AF37]' : 'border-amber-900/50 shadow-md'} bg-gradient-to-br from-gray-900 via-gray-950 to-black flex items-center justify-center text-[10px] sm:text-xl font-black text-white shadow-xl`}>
+                            {p.name[0].toUpperCase()}
+                          </div>
+                          {/* Cara trasera: icono de acción */}
+                          <div className={`absolute inset-0 backface-hidden rounded-full border-2 sm:border-4 ${p.id === currentPlayer.id ? 'border-blue-400 shadow-[0_0_15px_#3b82f6]' : p.is_capo ? 'border-poker-gold' : 'border-amber-900/50 shadow-md'} bg-gradient-to-br from-gray-950 to-black flex items-center justify-center [transform:rotateY(180deg)] shadow-xl`}>
+                            {getActionIcon(backIcon, isMobile ? 18 : 28)}
+                          </div>
+                        </motion.div>
+
+                        {p.is_capo && <Crown className="absolute -top-6 sm:-top-10 left-1/2 -translate-x-1/2 w-4 h-4 sm:w-8 sm:h-8 text-poker-gold drop-shadow-[0_0_8px_rgba(212,175,55,0.6)]" />}
+
+                        {/* Checkmark: jugador listo y en fase playing */}
                         <AnimatePresence>
-                          {change && <FloatingMoney amount={change.amount} type={change.type} />}
-                        </AnimatePresence>
-
-                        <div className="relative w-10 h-10 sm:w-16 sm:h-16 [perspective:1000px]">
-                          <motion.div
-                            className="w-full h-full relative [transform-style:preserve-3d]"
-                            animate={{ rotateY: isFlipped ? 180 : 0 }}
-                            transition={{ duration: 0.6, type: 'spring' }}
-                          >
-                            {/* Cara frontal: inicial del nombre */}
-                            <div className={`absolute inset-0 backface-hidden rounded-full border-2 sm:border-4 ${p.id === currentPlayer.id ? 'border-blue-500 shadow-[0_0_15px_#3b82f6]' : p.is_capo ? 'border-poker-gold shadow-[0_0_10px_#D4AF37]' : 'border-white/20'} bg-gray-900 flex items-center justify-center text-[10px] sm:text-xl font-black text-white`}>
-                              {p.name[0].toUpperCase()}
-                            </div>
-                            {/* Cara trasera: icono de acción */}
-                            <div className={`absolute inset-0 backface-hidden rounded-full border-2 sm:border-4 ${p.id === currentPlayer.id ? 'border-blue-500 shadow-[0_0_15px_#3b82f6]' : p.is_capo ? 'border-poker-gold' : 'border-white/20'} bg-gray-950 flex items-center justify-center [transform:rotateY(180deg)]`}>
-                              {getActionIcon(backIcon, isMobile ? 18 : 28)}
-                            </div>
-                          </motion.div>
-
-                          {p.is_capo && <Crown className="absolute -top-6 sm:-top-10 left-1/2 -translate-x-1/2 w-4 h-4 sm:w-8 sm:h-8 text-poker-gold drop-shadow-[0_0_8px_rgba(212,175,55,0.6)]" />}
-
-                          {/* Checkmark: jugador listo y en fase playing */}
-                          <AnimatePresence>
-                            {showCheck && (
-                              <motion.div
-                                initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
-                                className="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 bg-green-500 text-white rounded-full p-0.5 sm:p-1 border-2 border-black z-40 shadow-lg"
-                              >
-                                <Check size={isMobile ? 10 : 14} strokeWidth={4} />
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
-
-                        <div className={`mt-1 max-w-[80px] sm:max-w-[120px] bg-black/90 px-2 py-0.5 rounded-lg border ${p.id === currentPlayer.id ? 'border-blue-500/50' : 'border-white/10'} flex flex-col items-center`}>
-                          {gameMode === 'circle' && (
-                            <span className="text-[6px] sm:text-[7px] text-poker-gold/40 font-mono mb-0.5">
-                              POS {i + 1}
-                            </span>
+                          {showCheck && (
+                            <motion.div
+                              initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
+                              className="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 bg-green-500 text-white rounded-full p-0.5 sm:p-1 border-2 border-black z-40 shadow-lg"
+                            >
+                              <Check size={isMobile ? 10 : 14} strokeWidth={4} />
+                            </motion.div>
                           )}
-                          <span className={`text-[7px] sm:text-[9px] font-black uppercase truncate w-full text-center ${p.id === currentPlayer.id ? 'text-blue-400' : 'text-white'}`}>
-                            {p.id === currentPlayer.id ? p.name : (p.is_incognito ? '???' : p.name)}
+                        </AnimatePresence>
+                      </div>
+
+                      <div className={`mt-1 max-w-[80px] sm:max-w-[120px] bg-black/95 px-2 py-0.5 rounded-lg border ${p.id === currentPlayer.id ? 'border-blue-500/60 shadow-[0_0_10px_rgba(59,130,246,0.3)]' : 'border-poker-gold/20 shadow-md'} flex flex-col items-center backdrop-blur-md`}>
+                        {gameMode === 'circle' && (
+                          <span className="text-[6px] sm:text-[7px] text-poker-gold/50 font-mono mb-0.5">
+                            POS {i + 1}
                           </span>
-                          <span className="text-[6px] sm:text-[8px] text-green-400 font-bold">${p.balance.toLocaleString()}</span>
-                        </div>
+                        )}
+                        <span className={`text-[7px] sm:text-[9px] font-black uppercase truncate w-full text-center ${p.id === currentPlayer.id ? 'text-blue-400' : 'text-white'}`}>
+                          {p.id === currentPlayer.id ? p.name : (p.is_incognito ? '???' : p.name)}
+                        </span>
+                        <span className="text-[6px] sm:text-[8px] text-green-400 font-bold">${p.balance.toLocaleString()}</span>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+                );
+              })}
+            </div>
           ))}
         </div>
 
