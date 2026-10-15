@@ -502,18 +502,22 @@ export function GameBoard() {
               {/* Línea concéntrica de apuesta grabada en oro */}
               <div className={`absolute pointer-events-none ${gameMode === 'circle' ? 'inset-6 sm:inset-12 rounded-full' : 'inset-4 sm:inset-8 rounded-[2.5rem]'} border border-dashed border-poker-gold/25`} />
 
-              {/* Monograma en bajo relieve en el centro del paño */}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none opacity-20">
-                <div className="flex flex-col items-center justify-center text-center">
-                  <div className="w-20 h-20 sm:w-40 sm:h-40 rounded-full border border-poker-gold/30 flex items-center justify-center p-2 sm:p-4 relative shadow-[inset_0_0_20px_rgba(212,175,55,0.15)]">
-                    <div className="absolute inset-1 sm:inset-2 rounded-full border border-dashed border-poker-gold/20" />
-                    <Revolver size={isMobile ? 26 : 48} className="text-poker-gold rotate-45 opacity-80" />
-                    <Revolver size={isMobile ? 26 : 48} className="text-poker-gold -rotate-45 opacity-80 absolute" />
-                  </div>
-                  <span className="text-[7px] sm:text-[10px] font-black uppercase tracking-[0.35em] text-poker-gold mt-1.5 sm:mt-2">
-                    ALTA TRAICIÓN
-                  </span>
-                  <span className="text-[5px] sm:text-[7px] font-mono uppercase tracking-[0.2em] text-poker-gold/60">
+              {/* Logo Oficial de Alta Traición en bajo relieve en el centro del paño */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
+                <div className="relative flex flex-col items-center justify-center">
+                  {/* Anillos concéntricos de resplandor dorado */}
+                  <div className="absolute w-28 h-28 sm:w-60 sm:h-60 rounded-full border border-poker-gold/25 shadow-[inset_0_0_25px_rgba(212,175,55,0.15)] pointer-events-none" />
+                  <div className="absolute w-24 h-24 sm:w-52 sm:h-52 rounded-full border border-dashed border-poker-gold/20 pointer-events-none" />
+
+                  {/* Logo oficial fundido en el paño con mix-blend-screen */}
+                  <img 
+                    src="/pwa-512x512.png" 
+                    alt="Logo Alta Traición" 
+                    className="w-24 h-24 sm:w-48 sm:h-48 object-contain mix-blend-screen opacity-25 sm:opacity-35 drop-shadow-[0_0_20px_rgba(212,175,55,0.25)] filter contrast-125"
+                  />
+
+                  {/* Subtítulo elegante en bajo relieve */}
+                  <span className="text-[5px] sm:text-[8px] font-mono uppercase tracking-[0.3em] text-poker-gold/50 mt-1">
                     CLUB PRIVADO • SALÓN VIP
                   </span>
                 </div>
